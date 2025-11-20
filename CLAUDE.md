@@ -6,25 +6,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 toric-scope is an online toric variety visualizer. Toric varieties are geometric objects in algebraic geometry defined by combinatorial data (fans, polytopes). This project aims to provide interactive visualization of these mathematical structures.
 
+**IMPORTANT: This is NOT a 3D visualization project. Do not suggest Three.js, WebGL, or any 3D rendering libraries.**
+
 ## Current Status
 
-This is a new project with minimal code. The repository currently contains only:
-- README.md with project description
-- LICENSE (MIT)
-- Git configuration
+The project has basic infrastructure set up:
+- Backend: Python/FastAPI server with CORS configured
+  - Health check endpoints
+  - Placeholder API endpoints for toric varieties
+- Frontend: React + TypeScript with Vite
+  - Default template (not yet customized)
+  - Ready for development
 
 ## Development Setup
 
-Not yet configured. When setting up the development environment, this section should include:
-- How to install dependencies
-- How to run the development server
-- How to build for production
-- How to run tests
+**Backend:**
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ## Architecture
 
-To be determined as the project develops. Key architectural decisions to document:
-- Frontend framework choice (React, Vue, vanilla JS, etc.)
-- 3D rendering library (Three.js, WebGL, etc.)
-- Mathematical computation libraries
-- Data structures for representing fans, polytopes, and toric varieties
+**Tech Stack:**
+- Frontend: React + TypeScript + Vite
+- Backend: Python + FastAPI
+- Visualization: 2D canvas/SVG (NOT 3D)
+- Mathematical computation libraries: TBD
+- Data structures for representing fans, polytopes, and toric varieties: TBD
