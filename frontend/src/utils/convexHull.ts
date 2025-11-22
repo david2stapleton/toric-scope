@@ -79,3 +79,86 @@ export function convexHull(points: Point[]): Point[] {
 
   return hull;
 }
+
+/**
+ * Check if a point is strictly inside a convex polygon (not on boundary)
+ * Uses the cross product method - point is inside if it's on the same side of all edges
+ * Assumes polygon vertices are in counter-clockwise order (as returned by convexHull)
+ */
+export function isPointInsidePolygon(point: Point, polygon: Point[]): boolean {
+  if (polygon.length < 3) return false;
+
+  // For a convex polygon in counter-clockwise order,
+  // a point is inside if all cross products are positive
+  for (let i = 0; i < polygon.length; i++) {
+    const current = polygon[i];
+    const next = polygon[(i + 1) % polygon.length];
+
+    const cross = crossProduct(current, next, point);
+
+    // If cross product is <= 0, point is outside or on boundary
+    if (cross <= 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Find all integer lattice points on the line segment from p1 to p2 (excluding endpoints)
+ * Uses a parametric approach to find all lattice points
+ */
+function latticePointsOnSegment(p1: Point, p2: Point): Point[] {
+  const points: Point[] = [];
+
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+
+  // Calculate GCD to find the step size
+  const gcd = (a: number, b: number): number => {
+    a = Math.abs(a);
+    b = Math.abs(b);
+    while (b !== 0) {
+      const temp = b;
+      b = a % b;
+      a = temp;
+    }
+    return a;
+  };
+
+  const g = gcd(dx, dy);
+  if (g === 0) return points; // Same point
+
+  const stepX = dx / g;
+  const stepY = dy / g;
+
+  // Generate all intermediate lattice points (excluding endpoints)
+  for (let i = 1; i < g; i++) {
+    points.push({
+      x: p1.x + i * stepX,
+      y: p1.y + i * stepY
+    });
+  }
+
+  return points;
+}
+
+/**
+ * Find all integer lattice points on the edges of a polygon (excluding vertices)
+ */
+export function edgePointsOfPolygon(polygon: Point[]): Point[] {
+  if (polygon.length < 2) return [];
+
+  const edgePoints: Point[] = [];
+
+  for (let i = 0; i < polygon.length; i++) {
+    const current = polygon[i];
+    const next = polygon[(i + 1) % polygon.length];
+
+    const points = latticePointsOnSegment(current, next);
+    edgePoints.push(...points);
+  }
+
+  return edgePoints;
+}
