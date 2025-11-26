@@ -38,6 +38,7 @@ export default function LatticeCanvas({
   const [stratumRegistry, setStratumRegistry] = useState<StratumRegistry>(new StratumRegistry());
   const [selectedStratumId, setSelectedStratumId] = useState<string | null>(null);
   const [hoveredStratumId, setHoveredStratumId] = useState<string | null>(null);
+  const [shouldAutoCenter, setShouldAutoCenter] = useState(false);
 
   // Selection threshold that scales with zoom - smaller for better precision
   const getSelectionThreshold = () => {
@@ -639,6 +640,130 @@ export default function LatticeCanvas({
     }
   }, [selectedPoints, zoom, offset, width, height, gridSpacing, latticeType]);
 
+  // Calculate polytope centroid using shoelace formula
+  const calculatePolytopeCentroid = (points: Point[]): Point => {
+    const n = points.length;
+    if (n === 0) return { x: 0, y: 0 };
+    if (n === 1) return points[0];
+    if (n === 2) return { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
+
+    // Calculate signed area
+    let signedArea = 0;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      signedArea += points[i].x * points[j].y - points[j].x * points[i].y;
+    }
+    signedArea *= 0.5;
+
+    // Calculate centroid coordinates
+    let cx = 0;
+    let cy = 0;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const factor = points[i].x * points[j].y - points[j].x * points[i].y;
+      cx += (points[i].x + points[j].x) * factor;
+      cy += (points[i].y + points[j].y) * factor;
+    }
+
+    return {
+      x: cx / (6 * signedArea),
+      y: cy / (6 * signedArea)
+    };
+  };
+
+  // Center and fit the polytope in view
+  const centerView = () => {
+    const selectedPointsArray = getSelectedPointsArray();
+    if (selectedPointsArray.length < 3) return;
+
+    const hull = convexHull(selectedPointsArray);
+    if (hull.length < 3) return;
+
+    // Calculate centroid
+    const centroid = calculatePolytopeCentroid(hull);
+
+    // Calculate bounding box
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    hull.forEach(p => {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+    });
+
+    const polytopeWidth = maxX - minX;
+    const polytopeHeight = maxY - minY;
+
+    // Calculate zoom to fit polytope with padding
+    // Add extra margin to ensure polytope doesn't touch edges
+    const paddingFactor = 1.5; // 50% total padding (25% on each side)
+    const zoomX = (width / gridSpacing) / (polytopeWidth * paddingFactor);
+    const zoomY = (height / gridSpacing) / (polytopeHeight * paddingFactor);
+    const newZoom = Math.min(zoomX, zoomY, 5); // Cap at max zoom of 5
+
+    // Calculate offset to center the centroid at canvas center
+    // The latticeToCanvas formula is: centerX + latticeX * spacing + offset.x
+    // We want: centerX + centroid.x * spacing + offset.x = centerX
+    // So: offset.x = -centroid.x * spacing
+    const spacing = gridSpacing * newZoom;
+    const newOffset = {
+      x: -centroid.x * spacing,
+      y: -centroid.y * spacing
+    };
+
+    setZoom(newZoom);
+    setOffset(newOffset);
+  };
+
+  // Listen for center view event from button
+  useEffect(() => {
+    const handler = () => centerView();
+    window.addEventListener('centerView', handler);
+    return () => window.removeEventListener('centerView', handler);
+  }, [selectedPoints, width, height, gridSpacing]);
+
+  // Listen for get selected points event (for saving)
+  useEffect(() => {
+    const handler = () => {
+      const points = getSelectedPointsArray();
+      (window as any).selectedPointsForSave = points.map(p => [p.x, p.y]);
+    };
+    window.addEventListener('getSelectedPoints', handler);
+    return () => window.removeEventListener('getSelectedPoints', handler);
+  }, [selectedPoints]);
+
+  // Listen for load polytope event
+  useEffect(() => {
+    const handler = (event: any) => {
+      console.log('loadPolytope event received:', event.detail);
+      const { points, latticeType: loadedLatticeType } = event.detail;
+
+      // Convert points array to set
+      const pointsSet = new Set<string>();
+      points.forEach(([x, y]: [number, number]) => {
+        pointsSet.add(pointKey(x, y));
+      });
+
+      console.log('Setting selected points:', pointsSet);
+      setSelectedPoints(pointsSet);
+
+      // Trigger auto-centering
+      setShouldAutoCenter(true);
+    };
+    window.addEventListener('loadPolytope', handler);
+    return () => window.removeEventListener('loadPolytope', handler);
+  }, []);
+
+  // Auto-center when triggered and points are loaded
+  useEffect(() => {
+    if (shouldAutoCenter && selectedPoints.size >= 3) {
+      console.log('Auto-centering polytope');
+      centerView();
+      setShouldAutoCenter(false);
+    }
+  }, [shouldAutoCenter, selectedPoints]);
+
   // Prevent page scroll on wheel event with passive: false
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1022,10 +1147,32 @@ export default function LatticeCanvas({
       const edges = stratumRegistry.getAllEdges();
 
       if (vertices.length >= 3 && edges.length > 0) {
-        // Calculate center of mass in lattice coordinates
+        // Calculate center of mass (centroid) using the shoelace formula
+        // This gives the area-weighted centroid, not just the average of vertices
+        const points = vertices.map(v => v.point);
+        const n = points.length;
+
+        // Calculate signed area
+        let signedArea = 0;
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          signedArea += points[i].x * points[j].y - points[j].x * points[i].y;
+        }
+        signedArea *= 0.5;
+
+        // Calculate centroid coordinates
+        let cx = 0;
+        let cy = 0;
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          const factor = points[i].x * points[j].y - points[j].x * points[i].y;
+          cx += (points[i].x + points[j].x) * factor;
+          cy += (points[i].y + points[j].y) * factor;
+        }
+
         const centerOfMassLattice = {
-          x: vertices.reduce((sum, v) => sum + v.point.x, 0) / vertices.length,
-          y: vertices.reduce((sum, v) => sum + v.point.y, 0) / vertices.length
+          x: cx / (6 * signedArea),
+          y: cy / (6 * signedArea)
         };
 
         // Convert to canvas coordinates

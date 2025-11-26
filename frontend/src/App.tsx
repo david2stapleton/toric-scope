@@ -1,6 +1,7 @@
 import './App.css'
 import LatticeCanvas from './components/LatticeCanvas'
-import { useState } from 'react'
+import LatexRenderer from './components/LatexRenderer'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 export interface ColorPalette {
   name: string;
@@ -99,12 +100,199 @@ const palettes: ColorPalette[] = [
 export type LatticeType = 'square' | 'hexagonal';
 export type Mode = 'polytope-builder' | 'section-investigator' | 'rings' | 'fans';
 
+type ModeTextContent = Record<Mode, string>;
+
+const API_BASE = 'http://localhost:8000';
+
 function App() {
   const [selectedPalette, setSelectedPalette] = useState<ColorPalette>(palettes[0]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [latticeType, setLatticeType] = useState<LatticeType>('square');
   const [mode, setMode] = useState<Mode>('polytope-builder');
   const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 600, height: 600 });
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [savedPolytopes, setSavedPolytopes] = useState<Array<{name: string, point_count: number}>>([]);
+  const [isLoadDropdownOpen, setIsLoadDropdownOpen] = useState(false);
+
+  // Initialize with empty strings, will load from backend
+  const [modeTexts, setModeTexts] = useState<ModeTextContent>({
+    'polytope-builder': '',
+    'section-investigator': '',
+    'rings': '',
+    'fans': ''
+  });
+
+  // Measure canvas container and update dimensions
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    if (!container) return;
+
+    const updateDimensions = () => {
+      // Use clientWidth/clientHeight to get internal dimensions (excluding border)
+      const newWidth = container.clientWidth;
+      const newHeight = container.clientHeight;
+
+      if (newWidth > 0 && newHeight > 0) {
+        setCanvasDimensions({
+          width: newWidth,
+          height: newHeight
+        });
+      }
+    };
+
+    // Initial measurement after a short delay to let layout settle
+    const timeoutId = setTimeout(updateDimensions, 100);
+
+    // Update on window resize
+    const handleResize = () => {
+      updateDimensions();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  // Fetch all texts from backend on mount
+  useEffect(() => {
+    const fetchTexts = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/texts`);
+        if (response.ok) {
+          const data = await response.json();
+          setModeTexts(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch texts:', error);
+      }
+    };
+    fetchTexts();
+  }, []);
+
+  // Debounced save to backend
+  const saveTimeoutRef = useRef<number | null>(null);
+
+  const updateCurrentModeText = (newText: string) => {
+    // Update state immediately for responsive UI
+    setModeTexts(prev => ({
+      ...prev,
+      [mode]: newText
+    }));
+
+    // Debounce the API call
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await fetch(`${API_BASE}/api/text/${mode}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ content: newText })
+        });
+      } catch (error) {
+        console.error('Failed to save text:', error);
+      }
+    }, 500); // Save 500ms after user stops typing
+  };
+
+  // Fetch saved polytopes list
+  const fetchSavedPolytopes = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/polytopes`);
+      if (response.ok) {
+        const data = await response.json();
+        setSavedPolytopes(data.polytopes);
+      }
+    } catch (error) {
+      console.error('Failed to fetch saved polytopes:', error);
+    }
+  };
+
+  // Load polytopes list on mount
+  useEffect(() => {
+    fetchSavedPolytopes();
+  }, []);
+
+  // Save current polytope
+  const handleSavePolytope = async () => {
+    const name = prompt('Enter a name for this polytope:');
+    if (!name) return;
+
+    // Dispatch event to get selected points from canvas
+    const event = new CustomEvent('getSelectedPoints');
+    window.dispatchEvent(event);
+
+    // Wait a bit for the event to be processed
+    setTimeout(async () => {
+      const selectedPoints = (window as any).selectedPointsForSave;
+      if (!selectedPoints || selectedPoints.length < 3) {
+        alert('Please select at least 3 points to form a polytope');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/polytopes`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name,
+            lattice_type: latticeType,
+            points: selectedPoints
+          })
+        });
+
+        if (response.ok) {
+          alert(`Polytope "${name}" saved successfully!`);
+          fetchSavedPolytopes();
+        } else {
+          alert('Failed to save polytope');
+        }
+      } catch (error) {
+        console.error('Failed to save polytope:', error);
+        alert('Failed to save polytope');
+      }
+    }, 100);
+  };
+
+  // Load a polytope
+  const handleLoadPolytope = async (name: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/polytopes/${encodeURIComponent(name)}`);
+      if (response.ok) {
+        const data = await response.json();
+
+        // Set lattice type
+        setLatticeType(data.lattice_type);
+
+        // Dispatch event to load points into canvas
+        const event = new CustomEvent('loadPolytope', {
+          detail: {
+            points: data.points,
+            latticeType: data.lattice_type
+          }
+        });
+        window.dispatchEvent(event);
+
+        setIsLoadDropdownOpen(false);
+      } else {
+        alert('Failed to load polytope');
+      }
+    } catch (error) {
+      console.error('Failed to load polytope:', error);
+      alert('Failed to load polytope');
+    }
+  };
 
   const PaletteOption = ({ palette }: { palette: ColorPalette }) => (
     <div style={{
@@ -147,191 +335,295 @@ function App() {
       flexDirection: 'column',
       backgroundColor: selectedPalette.background
     }}>
-      {/* Top Menu Bar */}
-      <div style={{
-        height: '50px',
-        borderBottom: `1px solid ${selectedPalette.border}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 20px',
-        backgroundColor: selectedPalette.background
-      }}>
-        {/* Lattice Type Toggle */}
-        <div style={{
-          display: 'flex',
-          gap: '0',
-          border: `1px solid ${selectedPalette.border}`,
-          borderRadius: '6px',
-          overflow: 'hidden'
-        }}>
-          <button
-            onClick={() => setLatticeType('square')}
-            style={{
-              padding: '8px 12px',
-              backgroundColor: latticeType === 'square'
-                ? selectedPalette.border
-                : selectedPalette.background,
-              border: 'none',
-              cursor: 'pointer',
-              color: selectedPalette.text,
-              borderRight: `1px solid ${selectedPalette.border}`,
-              transition: 'background-color 0.15s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setLatticeType('hexagonal')}
-            style={{
-              padding: '8px 12px',
-              backgroundColor: latticeType === 'hexagonal'
-                ? selectedPalette.border
-                : selectedPalette.background,
-              border: 'none',
-              cursor: 'pointer',
-              color: selectedPalette.text,
-              transition: 'background-color 0.15s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M10 3 L16 6.5 L16 13.5 L10 17 L4 13.5 L4 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Palette Selector */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            style={{
-              padding: '8px 12px',
-              backgroundColor: selectedPalette.background,
-              border: `1px solid ${selectedPalette.border}`,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              gap: '10px',
-              alignItems: 'center',
-              fontSize: '14px',
-              color: selectedPalette.text
-            }}
-          >
-            <PaletteOption palette={selectedPalette} />
-            <span style={{ marginLeft: '4px' }}>▼</span>
-          </button>
-
-          {isDropdownOpen && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              marginTop: '4px',
-              backgroundColor: selectedPalette.background,
-              border: `1px solid ${selectedPalette.border}`,
-              borderRadius: '6px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              zIndex: 1000,
-              minWidth: '120px'
-            }}>
-              {palettes.map((palette) => (
-                <button
-                  key={palette.name}
-                  onClick={() => {
-                    setSelectedPalette(palette);
-                    setIsDropdownOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    backgroundColor: selectedPalette.name === palette.name
-                      ? palette.border
-                      : palette.background,
-                    border: 'none',
-                    borderBottom: `1px solid ${palette.border}`,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    textAlign: 'left',
-                    transition: 'background-color 0.1s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = palette.border;
-                  }}
-                  onMouseOut={(e) => {
-                    if (selectedPalette.name !== palette.name) {
-                      e.currentTarget.style.backgroundColor = palette.background;
-                    }
-                  }}
-                >
-                  <PaletteOption palette={palette} />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Main Content Area */}
       <div style={{
         flex: 1,
         display: 'flex',
-        gap: '20px',
-        padding: '20px',
         overflow: 'hidden'
       }}>
-        {/* Left Side: Canvas + Stats */}
+        {/* Left Sidebar Menu */}
         <div style={{
+          width: '60px',
+          borderRight: `1px solid ${selectedPalette.border}`,
+          backgroundColor: selectedPalette.background,
           display: 'flex',
           flexDirection: 'column',
-          gap: '20px'
+          alignItems: 'center',
+          padding: '20px 0',
+          gap: '15px'
         }}>
-          {/* Lattice Canvas */}
-          <div>
-            <LatticeCanvas palette={selectedPalette} latticeType={latticeType} mode={mode} />
-          </div>
-
-          {/* Stats/Config Box */}
+          {/* Lattice Type Toggle - Vertical */}
           <div style={{
-            width: '600px',
-            height: '200px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0',
             border: `1px solid ${selectedPalette.border}`,
             borderRadius: '6px',
-            padding: '15px',
-            backgroundColor: selectedPalette.background,
-            display: 'flex',
-            gap: '20px'
+            overflow: 'hidden'
           }}>
-            {/* Left: Mode Selector */}
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px'
-            }}>
-              <div style={{
-                fontSize: '12px',
-                fontWeight: '600',
+            <button
+              onClick={() => setLatticeType('square')}
+              style={{
+                padding: '12px',
+                backgroundColor: latticeType === 'square'
+                  ? selectedPalette.border
+                  : selectedPalette.background,
+                border: 'none',
+                cursor: 'pointer',
                 color: selectedPalette.text,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
+                borderBottom: `1px solid ${selectedPalette.border}`,
+                transition: 'background-color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setLatticeType('hexagonal')}
+              style={{
+                padding: '12px',
+                backgroundColor: latticeType === 'hexagonal'
+                  ? selectedPalette.border
+                  : selectedPalette.background,
+                border: 'none',
+                cursor: 'pointer',
+                color: selectedPalette.text,
+                transition: 'background-color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 3 L16 6.5 L16 13.5 L10 17 L4 13.5 L4 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Center View Button */}
+          <button
+            onClick={() => {
+              // This will be handled by a callback from LatticeCanvas
+              const event = new CustomEvent('centerView');
+              window.dispatchEvent(event);
+            }}
+            style={{
+              padding: '12px',
+              backgroundColor: selectedPalette.background,
+              border: `1px solid ${selectedPalette.border}`,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: selectedPalette.text,
+              transition: 'background-color 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.border;
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.background;
+            }}
+            title="Center and fit polytope"
+          >
+            {/* Four corners icon */}
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              {/* Top-left corner */}
+              <path d="M 3 3 L 3 7 M 3 3 L 7 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              {/* Top-right corner */}
+              <path d="M 17 3 L 17 7 M 17 3 L 13 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              {/* Bottom-left corner */}
+              <path d="M 3 17 L 3 13 M 3 17 L 7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              {/* Bottom-right corner */}
+              <path d="M 17 17 L 17 13 M 17 17 L 13 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          {/* Save Button */}
+          <button
+            onClick={handleSavePolytope}
+            style={{
+              padding: '12px',
+              backgroundColor: selectedPalette.background,
+              border: `1px solid ${selectedPalette.border}`,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: selectedPalette.text,
+              transition: 'background-color 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.border;
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.background;
+            }}
+            title="Save polytope"
+          >
+            {/* Save icon (floppy disk) */}
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M 4 4 L 4 16 L 16 16 L 16 6 L 14 4 Z M 7 4 L 7 8 L 13 8 L 13 4" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              <rect x="7" y="11" width="6" height="3" stroke="currentColor" strokeWidth="1.8" fill="none" />
+            </svg>
+          </button>
+
+          {/* Load Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setIsLoadDropdownOpen(!isLoadDropdownOpen)}
+              style={{
+                padding: '12px',
+                backgroundColor: selectedPalette.background,
+                border: `1px solid ${selectedPalette.border}`,
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: selectedPalette.text,
+                transition: 'background-color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = selectedPalette.border;
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = selectedPalette.background;
+              }}
+              title="Load polytope"
+            >
+              {/* Load icon (folder) */}
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M 3 6 L 3 16 L 17 16 L 17 6 L 10 6 L 8 4 L 3 4 Z" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* Load Dropdown */}
+            {isLoadDropdownOpen && (
+              <div style={{
+                position: 'absolute',
+                left: '70px',
+                top: '0',
+                backgroundColor: selectedPalette.background,
+                border: `1px solid ${selectedPalette.border}`,
+                borderRadius: '6px',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                zIndex: 1000,
+                minWidth: '200px',
+                maxHeight: '400px',
+                overflow: 'auto'
               }}>
-                Mode
+                {savedPolytopes.length === 0 ? (
+                  <div style={{
+                    padding: '12px',
+                    color: selectedPalette.text,
+                    fontSize: '12px',
+                    fontStyle: 'italic'
+                  }}>
+                    No saved polytopes
+                  </div>
+                ) : (
+                  savedPolytopes.map((polytope) => (
+                    <button
+                      key={polytope.name}
+                      onClick={() => handleLoadPolytope(polytope.name)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        backgroundColor: selectedPalette.background,
+                        border: 'none',
+                        borderBottom: `1px solid ${selectedPalette.border}`,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontSize: '12px',
+                        color: selectedPalette.text,
+                        transition: 'background-color 0.1s'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = selectedPalette.border;
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = selectedPalette.background;
+                      }}
+                    >
+                      {polytope.name}
+                      <span style={{ fontSize: '10px', opacity: 0.6, marginLeft: '8px' }}>
+                        ({polytope.point_count} pts)
+                      </span>
+                    </button>
+                  ))
+                )}
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          gap: '20px',
+          padding: '20px',
+          overflow: 'hidden',
+          minHeight: 0,
+          alignItems: 'stretch'
+        }}>
+        {/* Lattice Canvas */}
+        <div
+          ref={canvasContainerRef}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            backgroundColor: selectedPalette.background
+          }}
+        >
+          <LatticeCanvas
+            palette={selectedPalette}
+            latticeType={latticeType}
+            mode={mode}
+            width={canvasDimensions.width}
+            height={canvasDimensions.height}
+          />
+        </div>
+
+        {/* Right Side: Text Area */}
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          height: '100%',
+          border: `1px solid ${selectedPalette.border}`,
+          borderRadius: '6px',
+          backgroundColor: selectedPalette.background,
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Header with mode selector, color selector, and toggle button */}
+          <div style={{
+            padding: '12px 15px',
+            borderBottom: `1px solid ${selectedPalette.border}`,
+            fontSize: '12px',
+            fontWeight: '600',
+            color: selectedPalette.text,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Mode Dropdown */}
               <div style={{ position: 'relative' }}>
                 <button
                   onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
                   style={{
-                    width: '100%',
-                    padding: '10px 12px',
+                    padding: '8px 12px',
                     backgroundColor: selectedPalette.background,
                     border: `1px solid ${selectedPalette.border}`,
                     borderRadius: '6px',
@@ -339,9 +631,11 @@ function App() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    fontSize: '14px',
+                    fontSize: '12px',
                     color: selectedPalette.text,
-                    textAlign: 'left'
+                    textAlign: 'left',
+                    gap: '8px',
+                    minWidth: '140px'
                   }}
                 >
                   <span>
@@ -358,14 +652,14 @@ function App() {
                     position: 'absolute',
                     top: '100%',
                     left: 0,
-                    right: 0,
                     marginTop: '4px',
                     backgroundColor: selectedPalette.background,
                     border: `1px solid ${selectedPalette.border}`,
                     borderRadius: '6px',
                     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                     zIndex: 1000,
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    minWidth: '140px'
                   }}>
                     <button
                       onClick={() => {
@@ -382,7 +676,7 @@ function App() {
                         borderBottom: `1px solid ${selectedPalette.border}`,
                         cursor: 'pointer',
                         textAlign: 'left',
-                        fontSize: '14px',
+                        fontSize: '12px',
                         color: selectedPalette.text,
                         transition: 'background-color 0.1s'
                       }}
@@ -412,7 +706,7 @@ function App() {
                         borderBottom: `1px solid ${selectedPalette.border}`,
                         cursor: 'pointer',
                         textAlign: 'left',
-                        fontSize: '14px',
+                        fontSize: '12px',
                         color: selectedPalette.text,
                         transition: 'background-color 0.1s'
                       }}
@@ -442,7 +736,7 @@ function App() {
                         borderBottom: `1px solid ${selectedPalette.border}`,
                         cursor: 'pointer',
                         textAlign: 'left',
-                        fontSize: '14px',
+                        fontSize: '12px',
                         color: selectedPalette.text,
                         transition: 'background-color 0.1s'
                       }}
@@ -471,7 +765,7 @@ function App() {
                         border: 'none',
                         cursor: 'pointer',
                         textAlign: 'left',
-                        fontSize: '14px',
+                        fontSize: '12px',
                         color: selectedPalette.text,
                         transition: 'background-color 0.1s'
                       }}
@@ -489,45 +783,141 @@ function App() {
                   </div>
                 )}
               </div>
+
+              {/* Color Palette Dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  style={{
+                    padding: '8px 12px',
+                    backgroundColor: selectedPalette.background,
+                    border: `1px solid ${selectedPalette.border}`,
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    gap: '10px',
+                    alignItems: 'center',
+                    fontSize: '12px',
+                    color: selectedPalette.text
+                  }}
+                >
+                  <PaletteOption palette={selectedPalette} />
+                  <span style={{ marginLeft: '4px' }}>▼</span>
+                </button>
+
+                {isDropdownOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '4px',
+                    backgroundColor: selectedPalette.background,
+                    border: `1px solid ${selectedPalette.border}`,
+                    borderRadius: '6px',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                    zIndex: 1000,
+                    minWidth: '120px'
+                  }}>
+                    {palettes.map((palette) => (
+                      <button
+                        key={palette.name}
+                        onClick={() => {
+                          setSelectedPalette(palette);
+                          setIsDropdownOpen(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          backgroundColor: selectedPalette.name === palette.name
+                            ? palette.border
+                            : palette.background,
+                          border: 'none',
+                          borderBottom: `1px solid ${palette.border}`,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          textAlign: 'left',
+                          transition: 'background-color 0.1s'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor = palette.border;
+                        }}
+                        onMouseOut={(e) => {
+                          if (selectedPalette.name !== palette.name) {
+                            e.currentTarget.style.backgroundColor = palette.background;
+                          }
+                        }}
+                      >
+                        <PaletteOption palette={palette} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Right: Statistics (placeholder for now) */}
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px'
-            }}>
-              <div style={{
-                fontSize: '12px',
-                fontWeight: '600',
+            <button
+              onClick={() => setIsEditMode(!isEditMode)}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: isEditMode ? selectedPalette.border : selectedPalette.background,
+                border: `1px solid ${selectedPalette.border}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '11px',
                 color: selectedPalette.text,
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Statistics
-              </div>
-              <div style={{
-                fontSize: '13px',
-                color: selectedPalette.text,
-                opacity: 0.6
-              }}>
-                {/* Statistics will appear here */}
-              </div>
-            </div>
+                letterSpacing: '0.5px',
+                fontWeight: '600',
+                transition: 'background-color 0.15s'
+              }}
+            >
+              {isEditMode ? 'View' : 'Edit'}
+            </button>
           </div>
-        </div>
 
-        {/* Right Side: Text Area */}
-        <div style={{
-          flex: 1,
-          border: `1px solid ${selectedPalette.border}`,
-          borderRadius: '6px',
-          padding: '15px',
-          backgroundColor: selectedPalette.background,
-          overflow: 'auto'
-        }}>
-          {/* Text area content will go here */}
+          {isEditMode ? (
+            // Edit mode: Show textarea
+            <textarea
+              value={modeTexts[mode]}
+              onChange={(e) => updateCurrentModeText(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '15px',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                backgroundColor: selectedPalette.background,
+                color: selectedPalette.text,
+                fontSize: '14px',
+                fontFamily: 'monospace',
+                lineHeight: '1.6'
+              }}
+              placeholder="Enter notes with LaTeX (e.g., $x^2$, $$\int f$$)..."
+            />
+          ) : (
+            // View mode: Show rendered content
+            <div style={{
+              flex: 1,
+              padding: '15px',
+              overflow: 'auto',
+              backgroundColor: selectedPalette.background
+            }}>
+              {modeTexts[mode] ? (
+                <LatexRenderer content={modeTexts[mode]} textColor={selectedPalette.text} />
+              ) : (
+                <div style={{
+                  color: selectedPalette.text,
+                  opacity: 0.4,
+                  fontSize: '13px',
+                  fontStyle: 'italic'
+                }}>
+                  No content yet. Click "Edit" to add notes...
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         </div>
       </div>
     </div>
