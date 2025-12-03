@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { convexHull, isPointInsidePolygon, edgePointsOfPolygon, type Point } from '../utils/convexHull';
 import type { ColorPalette, LatticeType, Mode } from '../App';
 import { usePolytopeBuilderHandlers } from '../hooks/usePolytopeBuilderHandlers';
@@ -39,6 +39,11 @@ export default function LatticeCanvas({
   const [selectedStratumId, setSelectedStratumId] = useState<string | null>(null);
   const [hoveredStratumId, setHoveredStratumId] = useState<string | null>(null);
   const [shouldAutoCenter, setShouldAutoCenter] = useState(false);
+
+  // Undo/Redo history
+  const [history, setHistory] = useState<Set<string>[]>([new Set()]);
+  const historyIndexRef = useRef(0);
+  const isUndoRedoRef = useRef(false); // Track if change is from undo/redo
 
   // Selection threshold that scales with zoom - smaller for better precision
   const getSelectionThreshold = () => {
@@ -271,6 +276,49 @@ export default function LatticeCanvas({
     setZoom(newZoom);
   };
 
+  // Track changes to selectedPoints and update history
+  useEffect(() => {
+    // Skip if this change is from undo/redo
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+
+    // Truncate history after current index and add new state
+    setHistory((prevHistory) => {
+      const truncated = prevHistory.slice(0, historyIndexRef.current + 1);
+      truncated.push(new Set(selectedPoints));
+
+      // Limit to 50 states
+      if (truncated.length > 50) {
+        truncated.shift();
+        historyIndexRef.current = 49;
+      } else {
+        historyIndexRef.current = truncated.length - 1;
+      }
+
+      return truncated;
+    });
+  }, [selectedPoints]);
+
+  // Undo function
+  const undo = useCallback(() => {
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current--;
+      isUndoRedoRef.current = true;
+      setSelectedPoints(new Set(history[historyIndexRef.current]));
+    }
+  }, [history]);
+
+  // Redo function
+  const redo = useCallback(() => {
+    if (historyIndexRef.current < history.length - 1) {
+      historyIndexRef.current++;
+      isUndoRedoRef.current = true;
+      setSelectedPoints(new Set(history[historyIndexRef.current]));
+    }
+  }, [history]);
+
   // Use the appropriate event handlers based on mode
   const polytopeBuilderHandlers = usePolytopeBuilderHandlers({
     selectedPoints,
@@ -319,8 +367,8 @@ export default function LatticeCanvas({
   });
 
   // Select the appropriate handlers based on mode
-  const handlers = mode === 'polytope-builder' ? polytopeBuilderHandlers
-    : mode === 'section-investigator' ? sectionInvestigatorHandlers
+  const handlers = mode === 'polytopes' ? polytopeBuilderHandlers
+    : mode === 'multiplicities' ? sectionInvestigatorHandlers
     : mode === 'rings' ? ringsHandlers
     : polytopeBuilderHandlers; // Default for 'fans' mode for now
   const isPanning = handlers.isPanning;
@@ -410,11 +458,11 @@ export default function LatticeCanvas({
 
   // Clear mode-specific state when switching modes
   useEffect(() => {
-    if (mode === 'polytope-builder') {
+    if (mode === 'polytopes') {
       setSelectedInvestigatorPoint(null);
       setHighlightedEdges([]);
       setSelectedStratumId(null);
-    } else if (mode === 'section-investigator') {
+    } else if (mode === 'multiplicities') {
       setSelectedStratumId(null);
     } else if (mode === 'rings') {
       setSelectedInvestigatorPoint(null);
@@ -722,6 +770,29 @@ export default function LatticeCanvas({
     window.addEventListener('centerView', handler);
     return () => window.removeEventListener('centerView', handler);
   }, [selectedPoints, width, height, gridSpacing]);
+
+  // Listen for clear points event from button
+  useEffect(() => {
+    const handler = () => {
+      setSelectedPoints(new Set());
+    };
+    window.addEventListener('clearPoints', handler);
+    return () => window.removeEventListener('clearPoints', handler);
+  }, []);
+
+  // Listen for undo event
+  useEffect(() => {
+    const handler = () => undo();
+    window.addEventListener('undoPoints', handler);
+    return () => window.removeEventListener('undoPoints', handler);
+  }, [undo]);
+
+  // Listen for redo event
+  useEffect(() => {
+    const handler = () => redo();
+    window.addEventListener('redoPoints', handler);
+    return () => window.removeEventListener('redoPoints', handler);
+  }, [redo]);
 
   // Listen for get selected points event (for saving)
   useEffect(() => {
@@ -1073,6 +1144,14 @@ export default function LatticeCanvas({
               ctx.fill();
             }
           }
+
+          // Draw "0" label next to the selected vertex
+          const labelOffset = 20;
+          ctx.font = 'bold 16px monospace';
+          ctx.fillStyle = palette.text;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('0', vertexCanvas.x + labelOffset, vertexCanvas.y - labelOffset);
         }
       } else if (stratum && stratum.dimension === 1) {
         // Edge selected - draw half-plane extending from edge in normal direction

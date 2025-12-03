@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Point } from '../utils/convexHull';
 
 interface UseSectionInvestigatorHandlersProps {
@@ -138,6 +138,20 @@ export function useSectionInvestigatorHandlers({
       setSelectedInvestigatorPoint(null);
     }
   };
+
+  // Listen for mouseup on window to handle releases outside canvas
+  useEffect(() => {
+    const handleWindowMouseUp = () => {
+      if (dragStart) {
+        setIsPanning(false);
+        setDragStart(null);
+        setPanStart(null);
+      }
+    };
+
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => window.removeEventListener('mouseup', handleWindowMouseUp);
+  }, [dragStart]);
 
   return {
     handleMouseDown,

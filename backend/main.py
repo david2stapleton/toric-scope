@@ -14,7 +14,7 @@ DATA_DIR.mkdir(exist_ok=True)
 TEXT_FILE = DATA_DIR / "mode_texts.json"
 
 # Valid modes
-Mode = Literal["polytope-builder", "section-investigator", "rings", "fans"]
+Mode = Literal["polytopes", "multiplicities", "rings", "fans"]
 
 class TextContent(BaseModel):
     content: str
@@ -98,8 +98,8 @@ async def get_all_texts():
     texts = load_texts()
     # Ensure all modes have a value (empty string if not set)
     return {
-        "polytope-builder": texts.get("polytope-builder", ""),
-        "section-investigator": texts.get("section-investigator", ""),
+        "polytopes": texts.get("polytopes", ""),
+        "multiplicities": texts.get("multiplicities", ""),
         "rings": texts.get("rings", ""),
         "fans": texts.get("fans", "")
     }

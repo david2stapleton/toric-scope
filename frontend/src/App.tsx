@@ -17,13 +17,13 @@ export interface ColorPalette {
 const palettes: ColorPalette[] = [
   {
     name: 'palette-0',
-    background: '#f5f0e8',
-    latticePoints: '#c4b8a8',
-    selectedPoints: '#ffb6c1',
-    hullFill: 'rgba(179, 157, 219, 0.3)',
-    hullStroke: '#b39ddb',
-    border: '#d4c4b4',
-    text: '#6b5d4f'
+    background: '#fff4e6',
+    latticePoints: '#d4a574',
+    selectedPoints: '#ff6b35',
+    hullFill: 'rgba(255, 107, 53, 0.15)',
+    hullStroke: '#ff8c42',
+    border: '#cc8844',
+    text: '#2d2d2d'
   },
   {
     name: 'palette-1',
@@ -98,7 +98,7 @@ const palettes: ColorPalette[] = [
 ];
 
 export type LatticeType = 'square' | 'hexagonal';
-export type Mode = 'polytope-builder' | 'section-investigator' | 'rings' | 'fans';
+export type Mode = 'polytopes' | 'multiplicities' | 'rings' | 'fans';
 
 type ModeTextContent = Record<Mode, string>;
 
@@ -108,7 +108,7 @@ function App() {
   const [selectedPalette, setSelectedPalette] = useState<ColorPalette>(palettes[0]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [latticeType, setLatticeType] = useState<LatticeType>('square');
-  const [mode, setMode] = useState<Mode>('polytope-builder');
+  const [mode, setMode] = useState<Mode>('polytopes');
   const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 600, height: 600 });
@@ -118,8 +118,8 @@ function App() {
 
   // Initialize with empty strings, will load from backend
   const [modeTexts, setModeTexts] = useState<ModeTextContent>({
-    'polytope-builder': '',
-    'section-investigator': '',
+    'polytopes': '',
+    'multiplicities': '',
     'rings': '',
     'fans': ''
   });
@@ -220,6 +220,23 @@ function App() {
   // Load polytopes list on mount
   useEffect(() => {
     fetchSavedPolytopes();
+  }, []);
+
+  // Listen for polytope link clicks from notes
+  useEffect(() => {
+    const handler = (event: any) => {
+      const { name, mode: targetMode } = event.detail;
+      console.log('Link clicked:', { name, targetMode });
+      // Set mode first if specified
+      if (targetMode) {
+        console.log('Setting mode to:', targetMode);
+        setMode(targetMode as Mode);
+      }
+      // Then load the polytope
+      handleLoadPolytope(name);
+    };
+    window.addEventListener('loadPolytopeFromLink', handler);
+    return () => window.removeEventListener('loadPolytopeFromLink', handler);
   }, []);
 
   // Save current polytope
@@ -444,6 +461,108 @@ function App() {
             </svg>
           </button>
 
+          {/* Clear Button */}
+          <button
+            onClick={() => {
+              const event = new CustomEvent('clearPoints');
+              window.dispatchEvent(event);
+            }}
+            style={{
+              padding: '12px',
+              backgroundColor: selectedPalette.background,
+              border: `1px solid ${selectedPalette.border}`,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: selectedPalette.text,
+              transition: 'background-color 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.border;
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.background;
+            }}
+            title="Clear all points"
+          >
+            {/* X icon */}
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M 5 5 L 15 15 M 15 5 L 5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          {/* Undo/Redo Buttons */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0',
+            border: `1px solid ${selectedPalette.border}`,
+            borderRadius: '6px',
+            overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => {
+                const event = new CustomEvent('undoPoints');
+                window.dispatchEvent(event);
+              }}
+              style={{
+                padding: '12px',
+                backgroundColor: selectedPalette.background,
+                border: 'none',
+                borderBottom: `1px solid ${selectedPalette.border}`,
+                cursor: 'pointer',
+                color: selectedPalette.text,
+                transition: 'background-color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = selectedPalette.border;
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = selectedPalette.background;
+              }}
+              title="Undo"
+            >
+              {/* Undo icon - curved arrow left */}
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M 7 7 L 4 10 L 7 13 M 4 10 L 14 10 C 15.5 10 17 11.5 17 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
+            </button>
+            <button
+              onClick={() => {
+                const event = new CustomEvent('redoPoints');
+                window.dispatchEvent(event);
+              }}
+              style={{
+                padding: '12px',
+                backgroundColor: selectedPalette.background,
+                border: 'none',
+                cursor: 'pointer',
+                color: selectedPalette.text,
+                transition: 'background-color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = selectedPalette.border;
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = selectedPalette.background;
+              }}
+              title="Redo"
+            >
+              {/* Redo icon - curved arrow right */}
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M 13 7 L 16 10 L 13 13 M 16 10 L 6 10 C 4.5 10 3 11.5 3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
+            </button>
+          </div>
+
           {/* Save Button */}
           <button
             onClick={handleSavePolytope}
@@ -639,8 +758,8 @@ function App() {
                   }}
                 >
                   <span>
-                    {mode === 'polytope-builder' ? 'Polytope'
-                      : mode === 'section-investigator' ? 'Multiplicities'
+                    {mode === 'polytopes' ? 'Polytopes'
+                      : mode === 'multiplicities' ? 'Multiplicities'
                       : mode === 'rings' ? 'Rings'
                       : 'Fans'}
                   </span>
@@ -663,13 +782,13 @@ function App() {
                   }}>
                     <button
                       onClick={() => {
-                        setMode('polytope-builder');
+                        setMode('polytopes');
                         setIsModeDropdownOpen(false);
                       }}
                       style={{
                         width: '100%',
                         padding: '10px 12px',
-                        backgroundColor: mode === 'polytope-builder'
+                        backgroundColor: mode === 'polytopes'
                           ? selectedPalette.border
                           : selectedPalette.background,
                         border: 'none',
@@ -684,42 +803,12 @@ function App() {
                         e.currentTarget.style.backgroundColor = selectedPalette.border;
                       }}
                       onMouseOut={(e) => {
-                        if (mode !== 'polytope-builder') {
+                        if (mode !== 'polytopes') {
                           e.currentTarget.style.backgroundColor = selectedPalette.background;
                         }
                       }}
                     >
-                      Polytope
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMode('section-investigator');
-                        setIsModeDropdownOpen(false);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        backgroundColor: mode === 'section-investigator'
-                          ? selectedPalette.border
-                          : selectedPalette.background,
-                        border: 'none',
-                        borderBottom: `1px solid ${selectedPalette.border}`,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        color: selectedPalette.text,
-                        transition: 'background-color 0.1s'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = selectedPalette.border;
-                      }}
-                      onMouseOut={(e) => {
-                        if (mode !== 'section-investigator') {
-                          e.currentTarget.style.backgroundColor = selectedPalette.background;
-                        }
-                      }}
-                    >
-                      Multiplicities
+                      Polytopes
                     </button>
                     <button
                       onClick={() => {
@@ -763,6 +852,7 @@ function App() {
                           ? selectedPalette.border
                           : selectedPalette.background,
                         border: 'none',
+                        borderBottom: `1px solid ${selectedPalette.border}`,
                         cursor: 'pointer',
                         textAlign: 'left',
                         fontSize: '12px',
@@ -779,6 +869,35 @@ function App() {
                       }}
                     >
                       Fans
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMode('multiplicities');
+                        setIsModeDropdownOpen(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        backgroundColor: mode === 'multiplicities'
+                          ? selectedPalette.border
+                          : selectedPalette.background,
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontSize: '12px',
+                        color: selectedPalette.text,
+                        transition: 'background-color 0.1s'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = selectedPalette.border;
+                      }}
+                      onMouseOut={(e) => {
+                        if (mode !== 'multiplicities') {
+                          e.currentTarget.style.backgroundColor = selectedPalette.background;
+                        }
+                      }}
+                    >
+                      Multiplicities
                     </button>
                   </div>
                 )}
@@ -904,7 +1023,7 @@ function App() {
               backgroundColor: selectedPalette.background
             }}>
               {modeTexts[mode] ? (
-                <LatexRenderer content={modeTexts[mode]} textColor={selectedPalette.text} />
+                <LatexRenderer content={modeTexts[mode]} textColor={selectedPalette.text} palette={selectedPalette} />
               ) : (
                 <div style={{
                   color: selectedPalette.text,
