@@ -28,11 +28,7 @@ class PolytopeData(BaseModel):
 # Configure CORS to allow frontend to communicate with backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Local development
-        "https://toric-scope-git-main-david-stapletons-projects-52d10eeb.vercel.app",  # Production
-        "https://*.vercel.app",  # All Vercel preview deployments
-    ],
+    allow_origins=["*"],  # Allow all origins (you can restrict this later)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
