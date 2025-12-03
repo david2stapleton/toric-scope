@@ -105,8 +105,7 @@ type ModeTextContent = Record<Mode, string>;
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 function App() {
-  const [selectedPalette, setSelectedPalette] = useState<ColorPalette>(palettes[0]);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedPalette] = useState<ColorPalette>(palettes[0]);
   const [latticeType, setLatticeType] = useState<LatticeType>('square');
   const [mode, setMode] = useState<Mode>('polytopes');
   const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
@@ -357,36 +356,6 @@ function App() {
     }
   };
 
-  const PaletteOption = ({ palette }: { palette: ColorPalette }) => (
-    <div style={{
-      display: 'flex',
-      gap: '6px',
-      alignItems: 'center'
-    }}>
-      <div style={{
-        width: '16px',
-        height: '16px',
-        borderRadius: '50%',
-        backgroundColor: palette.selectedPoints,
-        border: `1px solid ${palette.border}`
-      }} />
-      <div style={{
-        width: '16px',
-        height: '16px',
-        borderRadius: '50%',
-        backgroundColor: palette.hullStroke,
-        border: `1px solid ${palette.border}`
-      }} />
-      <div style={{
-        width: '16px',
-        height: '16px',
-        borderRadius: '50%',
-        backgroundColor: palette.latticePoints,
-        border: `1px solid ${palette.border}`
-      }} />
-    </div>
-  );
-
   return (
     <div style={{
       position: 'fixed',
@@ -398,17 +367,19 @@ function App() {
       flexDirection: 'column',
       backgroundColor: selectedPalette.background
     }}>
-      {/* Mobile Header with Hamburger */}
-      {isMobile && (
-        <div style={{
-          height: '50px',
-          borderBottom: `1px solid ${selectedPalette.border}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 15px',
-          backgroundColor: selectedPalette.background
-        }}>
+      {/* Unified Top Navigation Bar */}
+      <div style={{
+        height: '50px',
+        borderBottom: `1px solid ${selectedPalette.border}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 15px',
+        backgroundColor: selectedPalette.background
+      }}>
+        {/* Left side: Hamburger + Mode selector */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {/* Hamburger button */}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             style={{
@@ -419,7 +390,6 @@ function App() {
               color: selectedPalette.text
             }}
           >
-            {/* Hamburger icon */}
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="3" y1="6" x2="21" y2="6" />
               <line x1="3" y1="12" x2="21" y2="12" />
@@ -427,7 +397,175 @@ function App() {
             </svg>
           </button>
 
-          {/* View indicator */}
+          {/* Mode Dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: selectedPalette.background,
+                border: `1px solid ${selectedPalette.border}`,
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: '12px',
+                color: selectedPalette.text,
+                textAlign: 'left',
+                gap: '8px',
+                minWidth: '140px'
+              }}
+            >
+              <span>
+                {mode === 'polytopes' ? 'Polytopes'
+                  : mode === 'multiplicities' ? 'Multiplicities'
+                  : mode === 'rings' ? 'Rings'
+                  : 'Fans'}
+              </span>
+              <span>▼</span>
+            </button>
+
+            {isModeDropdownOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '4px',
+                backgroundColor: selectedPalette.background,
+                border: `1px solid ${selectedPalette.border}`,
+                borderRadius: '6px',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                zIndex: 1000,
+                overflow: 'hidden',
+                minWidth: '140px'
+              }}>
+                <button
+                  onClick={() => {
+                    setMode('polytopes');
+                    setIsModeDropdownOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    backgroundColor: mode === 'polytopes'
+                      ? selectedPalette.border
+                      : selectedPalette.background,
+                    border: 'none',
+                    borderBottom: `1px solid ${selectedPalette.border}`,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    color: selectedPalette.text,
+                    transition: 'background-color 0.1s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = selectedPalette.border;
+                  }}
+                  onMouseOut={(e) => {
+                    if (mode !== 'polytopes') {
+                      e.currentTarget.style.backgroundColor = selectedPalette.background;
+                    }
+                  }}
+                >
+                  Polytopes
+                </button>
+                <button
+                  onClick={() => {
+                    setMode('rings');
+                    setIsModeDropdownOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    backgroundColor: mode === 'rings'
+                      ? selectedPalette.border
+                      : selectedPalette.background,
+                    border: 'none',
+                    borderBottom: `1px solid ${selectedPalette.border}`,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    color: selectedPalette.text,
+                    transition: 'background-color 0.1s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = selectedPalette.border;
+                  }}
+                  onMouseOut={(e) => {
+                    if (mode !== 'rings') {
+                      e.currentTarget.style.backgroundColor = selectedPalette.background;
+                    }
+                  }}
+                >
+                  Rings
+                </button>
+                <button
+                  onClick={() => {
+                    setMode('fans');
+                    setIsModeDropdownOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    backgroundColor: mode === 'fans'
+                      ? selectedPalette.border
+                      : selectedPalette.background,
+                    border: 'none',
+                    borderBottom: `1px solid ${selectedPalette.border}`,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    color: selectedPalette.text,
+                    transition: 'background-color 0.1s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = selectedPalette.border;
+                  }}
+                  onMouseOut={(e) => {
+                    if (mode !== 'fans') {
+                      e.currentTarget.style.backgroundColor = selectedPalette.background;
+                    }
+                  }}
+                >
+                  Fans
+                </button>
+                <button
+                  onClick={() => {
+                    setMode('multiplicities');
+                    setIsModeDropdownOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    backgroundColor: mode === 'multiplicities'
+                      ? selectedPalette.border
+                      : selectedPalette.background,
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '12px',
+                    color: selectedPalette.text,
+                    transition: 'background-color 0.1s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = selectedPalette.border;
+                  }}
+                  onMouseOut={(e) => {
+                    if (mode !== 'multiplicities') {
+                      e.currentTarget.style.backgroundColor = selectedPalette.background;
+                    }
+                  }}
+                >
+                  Multiplicities
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right side: View toggle (mobile only) */}
+        {isMobile && (
           <div style={{
             display: 'flex',
             gap: '8px',
@@ -463,11 +601,11 @@ function App() {
               Notes
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Backdrop for mobile sidebar */}
-      {isMobile && isSidebarOpen && (
+      {/* Backdrop for hamburger menu */}
+      {isSidebarOpen && (
         <div
           onClick={() => setIsSidebarOpen(false)}
           style={{
@@ -482,30 +620,23 @@ function App() {
         />
       )}
 
-      {/* Main Content Area */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        overflow: 'hidden'
-      }}>
-        {/* Left Sidebar Menu */}
+      {/* Hamburger Menu Dropdown */}
+      {isSidebarOpen && (
         <div style={{
-          width: isMobile ? (isSidebarOpen ? '200px' : '0') : '60px',
-          borderRight: `1px solid ${selectedPalette.border}`,
+          position: 'absolute',
+          top: '50px',
+          left: 0,
+          width: '220px',
           backgroundColor: selectedPalette.background,
+          border: `1px solid ${selectedPalette.border}`,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          zIndex: 100,
+          maxHeight: 'calc(100vh - 50px)',
+          overflow: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: isMobile ? 'flex-start' : 'center',
-          padding: isMobile ? (isSidebarOpen ? '20px 15px' : '0') : '20px 0',
-          gap: '15px',
-          overflow: isMobile ? 'auto' : 'visible',
-          transition: 'width 0.3s ease, padding 0.3s ease',
-          position: isMobile ? 'absolute' : 'relative',
-          left: 0,
-          top: isMobile ? '50px' : 0,
-          bottom: 0,
-          zIndex: 100,
-          boxShadow: isMobile && isSidebarOpen ? '2px 0 8px rgba(0,0,0,0.1)' : 'none'
+          padding: '15px',
+          gap: '15px'
         }}>
           {/* Lattice Type Toggle - Vertical */}
           <div style={{
@@ -820,7 +951,14 @@ function App() {
             )}
           </div>
         </div>
+      )}
 
+      {/* Main Content Area */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        overflow: 'hidden'
+      }}>
         {/* Main Content */}
         <div
           style={{
@@ -867,278 +1005,35 @@ function App() {
           display: isMobile ? (mobileView === 'text' ? 'flex' : 'none') : 'flex',
           flexDirection: 'column'
         }}>
-          {/* Header with mode selector, color selector, and toggle button */}
-          <div style={{
-            padding: '12px 15px',
-            borderBottom: `1px solid ${selectedPalette.border}`,
-            fontSize: '12px',
-            fontWeight: '600',
-            color: selectedPalette.text,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* Mode Dropdown */}
-              <div style={{ position: 'relative' }}>
-                <button
-                  onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: selectedPalette.background,
-                    border: `1px solid ${selectedPalette.border}`,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: '12px',
-                    color: selectedPalette.text,
-                    textAlign: 'left',
-                    gap: '8px',
-                    minWidth: '140px'
-                  }}
-                >
-                  <span>
-                    {mode === 'polytopes' ? 'Polytopes'
-                      : mode === 'multiplicities' ? 'Multiplicities'
-                      : mode === 'rings' ? 'Rings'
-                      : 'Fans'}
-                  </span>
-                  <span>▼</span>
-                </button>
-
-                {isModeDropdownOpen && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '4px',
-                    backgroundColor: selectedPalette.background,
-                    border: `1px solid ${selectedPalette.border}`,
-                    borderRadius: '6px',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                    zIndex: 1000,
-                    overflow: 'hidden',
-                    minWidth: '140px'
-                  }}>
-                    <button
-                      onClick={() => {
-                        setMode('polytopes');
-                        setIsModeDropdownOpen(false);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        backgroundColor: mode === 'polytopes'
-                          ? selectedPalette.border
-                          : selectedPalette.background,
-                        border: 'none',
-                        borderBottom: `1px solid ${selectedPalette.border}`,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        color: selectedPalette.text,
-                        transition: 'background-color 0.1s'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = selectedPalette.border;
-                      }}
-                      onMouseOut={(e) => {
-                        if (mode !== 'polytopes') {
-                          e.currentTarget.style.backgroundColor = selectedPalette.background;
-                        }
-                      }}
-                    >
-                      Polytopes
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMode('rings');
-                        setIsModeDropdownOpen(false);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        backgroundColor: mode === 'rings'
-                          ? selectedPalette.border
-                          : selectedPalette.background,
-                        border: 'none',
-                        borderBottom: `1px solid ${selectedPalette.border}`,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        color: selectedPalette.text,
-                        transition: 'background-color 0.1s'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = selectedPalette.border;
-                      }}
-                      onMouseOut={(e) => {
-                        if (mode !== 'rings') {
-                          e.currentTarget.style.backgroundColor = selectedPalette.background;
-                        }
-                      }}
-                    >
-                      Rings
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMode('fans');
-                        setIsModeDropdownOpen(false);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        backgroundColor: mode === 'fans'
-                          ? selectedPalette.border
-                          : selectedPalette.background,
-                        border: 'none',
-                        borderBottom: `1px solid ${selectedPalette.border}`,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        color: selectedPalette.text,
-                        transition: 'background-color 0.1s'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = selectedPalette.border;
-                      }}
-                      onMouseOut={(e) => {
-                        if (mode !== 'fans') {
-                          e.currentTarget.style.backgroundColor = selectedPalette.background;
-                        }
-                      }}
-                    >
-                      Fans
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMode('multiplicities');
-                        setIsModeDropdownOpen(false);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        backgroundColor: mode === 'multiplicities'
-                          ? selectedPalette.border
-                          : selectedPalette.background,
-                        border: 'none',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontSize: '12px',
-                        color: selectedPalette.text,
-                        transition: 'background-color 0.1s'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = selectedPalette.border;
-                      }}
-                      onMouseOut={(e) => {
-                        if (mode !== 'multiplicities') {
-                          e.currentTarget.style.backgroundColor = selectedPalette.background;
-                        }
-                      }}
-                    >
-                      Multiplicities
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Color Palette Dropdown */}
-              <div style={{ position: 'relative' }}>
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: selectedPalette.background,
-                    border: `1px solid ${selectedPalette.border}`,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    gap: '10px',
-                    alignItems: 'center',
-                    fontSize: '12px',
-                    color: selectedPalette.text
-                  }}
-                >
-                  <PaletteOption palette={selectedPalette} />
-                  <span style={{ marginLeft: '4px' }}>▼</span>
-                </button>
-
-                {isDropdownOpen && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '4px',
-                    backgroundColor: selectedPalette.background,
-                    border: `1px solid ${selectedPalette.border}`,
-                    borderRadius: '6px',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                    zIndex: 1000,
-                    minWidth: '120px'
-                  }}>
-                    {palettes.map((palette) => (
-                      <button
-                        key={palette.name}
-                        onClick={() => {
-                          setSelectedPalette(palette);
-                          setIsDropdownOpen(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          backgroundColor: selectedPalette.name === palette.name
-                            ? palette.border
-                            : palette.background,
-                          border: 'none',
-                          borderBottom: `1px solid ${palette.border}`,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          textAlign: 'left',
-                          transition: 'background-color 0.1s'
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.backgroundColor = palette.border;
-                        }}
-                        onMouseOut={(e) => {
-                          if (selectedPalette.name !== palette.name) {
-                            e.currentTarget.style.backgroundColor = palette.background;
-                          }
-                        }}
-                      >
-                        <PaletteOption palette={palette} />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+          {/* Header - Edit button (development only) */}
+          {!import.meta.env.PROD && (
+            <div style={{
+              padding: '12px 15px',
+              borderBottom: `1px solid ${selectedPalette.border}`,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center'
+            }}>
+              <button
+                onClick={() => setIsEditMode(!isEditMode)}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: isEditMode ? selectedPalette.border : selectedPalette.background,
+                  border: `1px solid ${selectedPalette.border}`,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  color: selectedPalette.text,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  fontWeight: '600',
+                  transition: 'background-color 0.15s'
+                }}
+              >
+                {isEditMode ? 'View' : 'Edit'}
+              </button>
             </div>
-
-            <button
-              onClick={() => setIsEditMode(!isEditMode)}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: isEditMode ? selectedPalette.border : selectedPalette.background,
-                border: `1px solid ${selectedPalette.border}`,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '11px',
-                color: selectedPalette.text,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                fontWeight: '600',
-                transition: 'background-color 0.15s'
-              }}
-            >
-              {isEditMode ? 'View' : 'Edit'}
-            </button>
-          </div>
+          )}
 
           {isEditMode ? (
             // Edit mode: Show textarea
