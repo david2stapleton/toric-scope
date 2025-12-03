@@ -194,10 +194,6 @@ export default function LatticeCanvas({
       let minCanvasY = Infinity, maxCanvasY = -Infinity;
 
       // Calculate canvas bounds of selected points with the new offset
-      // Temporarily set zoom and offset to calculate positions
-      const oldZoom = zoom;
-      const oldOffset = offset;
-
       // We need to use the lattice transformation, but it depends on current state
       // So we'll compute manually
       selectedPointsArray.forEach(point => {
@@ -808,7 +804,7 @@ export default function LatticeCanvas({
   useEffect(() => {
     const handler = (event: any) => {
       console.log('loadPolytope event received:', event.detail);
-      const { points, latticeType: loadedLatticeType } = event.detail;
+      const { points } = event.detail;
 
       // Convert points array to set
       const pointsSet = new Set<string>();

@@ -1,7 +1,7 @@
 import './App.css'
 import LatticeCanvas from './components/LatticeCanvas'
 import LatexRenderer from './components/LatexRenderer'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export interface ColorPalette {
   name: string;

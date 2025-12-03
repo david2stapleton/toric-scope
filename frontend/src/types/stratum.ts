@@ -202,9 +202,9 @@ export class StratumRegistry {
    */
   toJSON(): SerializedStratumRegistry {
     return {
-      vertices: Array.from(this.vertices.values()).map(serializeStratum),
-      edges: Array.from(this.edges.values()).map(serializeStratum),
-      faces: Array.from(this.faces.values()).map(serializeStratum)
+      vertices: Array.from(this.vertices.values()).map(serializeStratum) as SerializedVertexStratum[],
+      edges: Array.from(this.edges.values()).map(serializeStratum) as SerializedEdgeStratum[],
+      faces: Array.from(this.faces.values()).map(serializeStratum) as SerializedFaceStratum[]
     };
   }
 
@@ -263,7 +263,7 @@ interface SerializedFaceStratum extends SerializedStratum {
 /**
  * Helper functions for serialization
  */
-function serializeStratum(stratum: Stratum): SerializedStratum {
+function serializeStratum(stratum: Stratum): SerializedVertexStratum | SerializedEdgeStratum | SerializedFaceStratum {
   const base = {
     id: stratum.id,
     dimension: stratum.dimension,
@@ -275,14 +275,12 @@ function serializeStratum(stratum: Stratum): SerializedStratum {
   };
 
   if (isVertexStratum(stratum)) {
-    return { ...base, dimension: 0, point: stratum.point };
+    return { ...base, dimension: 0 as const, point: stratum.point };
   } else if (isEdgeStratum(stratum)) {
-    return { ...base, dimension: 1, vertices: stratum.vertices, primitiveNormal: stratum.primitiveNormal };
-  } else if (isFaceStratum(stratum)) {
-    return { ...base, dimension: 2, hullVertices: stratum.hullVertices };
+    return { ...base, dimension: 1 as const, vertices: stratum.vertices, primitiveNormal: stratum.primitiveNormal };
+  } else {
+    return { ...base, dimension: 2 as const, hullVertices: (stratum as FaceStratum).hullVertices };
   }
-
-  return base;
 }
 
 function deserializeVertexStratum(data: SerializedVertexStratum): VertexStratum {
