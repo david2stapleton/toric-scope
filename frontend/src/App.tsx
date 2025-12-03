@@ -116,6 +116,11 @@ function App() {
   const [savedPolytopes, setSavedPolytopes] = useState<Array<{name: string, point_count: number}>>([]);
   const [isLoadDropdownOpen, setIsLoadDropdownOpen] = useState(false);
 
+  // Mobile responsive state
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileView, setMobileView] = useState<'canvas' | 'text'>('canvas'); // Which panel to show on mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Hamburger menu state
+
   // Initialize with empty strings, will load from backend
   const [modeTexts, setModeTexts] = useState<ModeTextContent>({
     'polytopes': '',
@@ -123,6 +128,47 @@ function App() {
     'rings': '',
     'fans': ''
   });
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Swipe gesture handling for mobile
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && mobileView === 'canvas') {
+      setMobileView('text');
+    }
+    if (isRightSwipe && mobileView === 'text') {
+      setMobileView('canvas');
+    }
+  };
 
   // Measure canvas container and update dimensions
   useEffect(() => {
@@ -156,7 +202,7 @@ function App() {
       clearTimeout(timeoutId);
       window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [mobileView]);
 
   // Fetch all texts from backend on mount
   useEffect(() => {
@@ -352,6 +398,90 @@ function App() {
       flexDirection: 'column',
       backgroundColor: selectedPalette.background
     }}>
+      {/* Mobile Header with Hamburger */}
+      {isMobile && (
+        <div style={{
+          height: '50px',
+          borderBottom: `1px solid ${selectedPalette.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 15px',
+          backgroundColor: selectedPalette.background
+        }}>
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            style={{
+              padding: '8px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: selectedPalette.text
+            }}
+          >
+            {/* Hamburger icon */}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+
+          {/* View indicator */}
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            fontSize: '12px',
+            color: selectedPalette.text
+          }}>
+            <button
+              onClick={() => setMobileView('canvas')}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: mobileView === 'canvas' ? selectedPalette.border : 'transparent',
+                border: `1px solid ${selectedPalette.border}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                color: selectedPalette.text,
+                fontSize: '12px'
+              }}
+            >
+              Lattice
+            </button>
+            <button
+              onClick={() => setMobileView('text')}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: mobileView === 'text' ? selectedPalette.border : 'transparent',
+                border: `1px solid ${selectedPalette.border}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                color: selectedPalette.text,
+                fontSize: '12px'
+              }}
+            >
+              Notes
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Backdrop for mobile sidebar */}
+      {isMobile && isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            top: '50px',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            zIndex: 99
+          }}
+        />
+      )}
+
       {/* Main Content Area */}
       <div style={{
         flex: 1,
@@ -360,14 +490,22 @@ function App() {
       }}>
         {/* Left Sidebar Menu */}
         <div style={{
-          width: '60px',
+          width: isMobile ? (isSidebarOpen ? '200px' : '0') : '60px',
           borderRight: `1px solid ${selectedPalette.border}`,
           backgroundColor: selectedPalette.background,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          padding: '20px 0',
-          gap: '15px'
+          alignItems: isMobile ? 'flex-start' : 'center',
+          padding: isMobile ? (isSidebarOpen ? '20px 15px' : '0') : '20px 0',
+          gap: '15px',
+          overflow: isMobile ? 'auto' : 'visible',
+          transition: 'width 0.3s ease, padding 0.3s ease',
+          position: isMobile ? 'absolute' : 'relative',
+          left: 0,
+          top: isMobile ? '50px' : 0,
+          bottom: 0,
+          zIndex: 100,
+          boxShadow: isMobile && isSidebarOpen ? '2px 0 8px rgba(0,0,0,0.1)' : 'none'
         }}>
           {/* Lattice Type Toggle - Vertical */}
           <div style={{
@@ -684,22 +822,29 @@ function App() {
         </div>
 
         {/* Main Content */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          gap: '20px',
-          padding: '20px',
-          overflow: 'hidden',
-          minHeight: 0,
-          alignItems: 'stretch'
-        }}>
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: isMobile ? '0' : '20px',
+            padding: isMobile ? '0' : '20px',
+            overflow: 'hidden',
+            minHeight: 0,
+            alignItems: 'stretch'
+          }}
+          onTouchStart={isMobile ? onTouchStart : undefined}
+          onTouchMove={isMobile ? onTouchMove : undefined}
+          onTouchEnd={isMobile ? onTouchEnd : undefined}
+        >
         {/* Lattice Canvas */}
         <div
           ref={canvasContainerRef}
           style={{
             flex: 1,
             minHeight: 0,
-            backgroundColor: selectedPalette.background
+            backgroundColor: selectedPalette.background,
+            display: isMobile ? (mobileView === 'canvas' ? 'block' : 'none') : 'block'
           }}
         >
           <LatticeCanvas
@@ -716,10 +861,10 @@ function App() {
           flex: 1,
           minHeight: 0,
           height: '100%',
-          border: `1px solid ${selectedPalette.border}`,
-          borderRadius: '6px',
+          border: isMobile ? 'none' : `1px solid ${selectedPalette.border}`,
+          borderRadius: isMobile ? '0' : '6px',
           backgroundColor: selectedPalette.background,
-          display: 'flex',
+          display: isMobile ? (mobileView === 'text' ? 'flex' : 'none') : 'flex',
           flexDirection: 'column'
         }}>
           {/* Header with mode selector, color selector, and toggle button */}

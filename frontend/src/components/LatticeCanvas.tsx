@@ -1307,6 +1307,47 @@ export default function LatticeCanvas({
 
   }, [width, height, gridSpacing, zoom, offset, selectedPoints, hoveredPoint, palette, latticeType, highlightedEdges, selectedInvestigatorPoint, edgeMultiplicities, mode, selectedStratumId, hoveredStratumId, stratumRegistry]);
 
+  // Convert touch event to mouse-like event for handlers
+  const touchToMouse = (touch: React.Touch): any => {
+    return {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    };
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (canvas && e.touches.length === 1) {
+      const mouseEvent = touchToMouse(e.touches[0]);
+      handlers.handleMouseDown(mouseEvent as any, canvas);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (canvas && e.touches.length === 1) {
+      const mouseEvent = touchToMouse(e.touches[0]);
+      handlers.handleMouseMove(mouseEvent as any, canvas);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (canvas) {
+      // Use changedTouches for touchend
+      const touch = e.changedTouches[0];
+      if (touch) {
+        const mouseEvent = touchToMouse(touch);
+        handlers.handleMouseUp(mouseEvent as any, canvas);
+      }
+    }
+  };
+
   return (
     <canvas
       ref={canvasRef}
@@ -1324,6 +1365,9 @@ export default function LatticeCanvas({
         const canvas = canvasRef.current;
         if (canvas) handlers.handleMouseUp(e, canvas);
       }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
       style={{
         cursor: isPanning ? 'grabbing' : 'default',
