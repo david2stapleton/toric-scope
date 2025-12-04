@@ -375,10 +375,11 @@ function App() {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0 15px',
-        backgroundColor: selectedPalette.background
+        backgroundColor: selectedPalette.background,
+        gap: '12px'
       }}>
-        {/* Left side: Hamburger + Mode selector */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        {/* Left side: Hamburger + Lattice Toggle + Center + Clear */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {/* Hamburger button */}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -387,7 +388,8 @@ function App() {
               backgroundColor: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              color: selectedPalette.text
+              color: selectedPalette.text,
+              outline: 'none'
             }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -397,12 +399,143 @@ function App() {
             </svg>
           </button>
 
+          {/* Lattice Type Toggle - Horizontal (desktop only) */}
+          {!isMobile && (
+            <div style={{
+              display: 'flex',
+              gap: '0',
+              border: `1px solid ${selectedPalette.border}`,
+              borderRadius: '6px',
+              overflow: 'hidden'
+            }}>
+            <button
+              onClick={() => setLatticeType('square')}
+              style={{
+                padding: '6px 10px',
+                backgroundColor: latticeType === 'square'
+                  ? selectedPalette.border
+                  : selectedPalette.background,
+                border: 'none',
+                borderRight: `1px solid ${selectedPalette.border}`,
+                cursor: 'pointer',
+                color: selectedPalette.text,
+                transition: 'background-color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                outline: 'none',
+                borderTopLeftRadius: '5px',
+                borderBottomLeftRadius: '5px'
+              }}
+              title="Square lattice"
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setLatticeType('hexagonal')}
+              style={{
+                padding: '6px 10px',
+                backgroundColor: latticeType === 'hexagonal'
+                  ? selectedPalette.border
+                  : selectedPalette.background,
+                border: 'none',
+                cursor: 'pointer',
+                color: selectedPalette.text,
+                transition: 'background-color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                outline: 'none',
+                borderTopRightRadius: '5px',
+                borderBottomRightRadius: '5px'
+              }}
+              title="Hexagonal lattice"
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                <path d="M 10 3 L 15.5 6.5 L 15.5 13.5 L 10 17 L 4.5 13.5 L 4.5 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
+              </svg>
+            </button>
+          </div>
+)}
+
+          {/* Center Button */}
+          <button
+            onClick={() => {
+              const event = new CustomEvent('centerView');
+              window.dispatchEvent(event);
+            }}
+            style={{
+              padding: '6px 10px',
+              backgroundColor: selectedPalette.background,
+              border: `1px solid ${selectedPalette.border}`,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: selectedPalette.text,
+              transition: 'background-color 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              outline: 'none'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.border;
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.background;
+            }}
+            title="Center and fit polytope"
+          >
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <path d="M 3 3 L 3 7 M 3 3 L 7 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M 17 3 L 17 7 M 17 3 L 13 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M 3 17 L 3 13 M 3 17 L 7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M 17 17 L 17 13 M 17 17 L 13 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          {/* Clear Button */}
+          <button
+            onClick={() => {
+              const event = new CustomEvent('clearPoints');
+              window.dispatchEvent(event);
+            }}
+            style={{
+              padding: '6px 10px',
+              backgroundColor: selectedPalette.background,
+              border: `1px solid ${selectedPalette.border}`,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: selectedPalette.text,
+              transition: 'background-color 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              outline: 'none'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.border;
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.background;
+            }}
+            title="Clear all points"
+          >
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <path d="M 5 5 L 15 15 M 15 5 L 5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Right side: Mode Dropdown + View Toggle (mobile) */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           {/* Mode Dropdown */}
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
               style={{
-                padding: '8px 12px',
+                padding: isMobile ? '6px 10px' : '8px 12px',
                 backgroundColor: selectedPalette.background,
                 border: `1px solid ${selectedPalette.border}`,
                 borderRadius: '6px',
@@ -413,8 +546,9 @@ function App() {
                 fontSize: '12px',
                 color: selectedPalette.text,
                 textAlign: 'left',
-                gap: '8px',
-                minWidth: '140px'
+                gap: '6px',
+                minWidth: isMobile ? '100px' : '140px',
+                outline: 'none'
               }}
             >
               <span>
@@ -430,7 +564,7 @@ function App() {
               <div style={{
                 position: 'absolute',
                 top: '100%',
-                left: 0,
+                right: 0,
                 marginTop: '4px',
                 backgroundColor: selectedPalette.background,
                 border: `1px solid ${selectedPalette.border}`,
@@ -438,7 +572,7 @@ function App() {
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 zIndex: 1000,
                 overflow: 'hidden',
-                minWidth: '140px'
+                minWidth: isMobile ? '100px' : '140px'
               }}>
                 <button
                   onClick={() => {
@@ -457,7 +591,10 @@ function App() {
                     textAlign: 'left',
                     fontSize: '12px',
                     color: selectedPalette.text,
-                    transition: 'background-color 0.1s'
+                    transition: 'background-color 0.1s',
+                    borderTopLeftRadius: '5px',
+                    borderTopRightRadius: '5px',
+                    outline: 'none'
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -546,7 +683,10 @@ function App() {
                     textAlign: 'left',
                     fontSize: '12px',
                     color: selectedPalette.text,
-                    transition: 'background-color 0.1s'
+                    transition: 'background-color 0.1s',
+                    borderBottomLeftRadius: '5px',
+                    borderBottomRightRadius: '5px',
+                    outline: 'none'
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -566,40 +706,59 @@ function App() {
 
         {/* Right side: View toggle (mobile only) */}
         {isMobile && (
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            fontSize: '12px',
-            color: selectedPalette.text
-          }}>
-            <button
-              onClick={() => setMobileView('canvas')}
+          <div
+            onClick={() => setMobileView(mobileView === 'canvas' ? 'text' : 'canvas')}
+            style={{
+              position: 'relative',
+              width: '70px',
+              height: '32px',
+              backgroundColor: selectedPalette.border,
+              borderRadius: '16px',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              border: `1px solid ${selectedPalette.border}`
+            }}
+            title={mobileView === 'canvas' ? 'Switch to Notes' : 'Switch to Lattice'}
+          >
+            {/* Sliding knob */}
+            <div
               style={{
-                padding: '6px 12px',
-                backgroundColor: mobileView === 'canvas' ? selectedPalette.border : 'transparent',
-                border: `1px solid ${selectedPalette.border}`,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                color: selectedPalette.text,
-                fontSize: '12px'
+                position: 'absolute',
+                top: '2px',
+                left: mobileView === 'canvas' ? '2px' : '36px',
+                width: '30px',
+                height: '26px',
+                backgroundColor: selectedPalette.background,
+                borderRadius: '13px',
+                transition: 'left 0.2s ease-in-out',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
               }}
             >
-              Lattice
-            </button>
-            <button
-              onClick={() => setMobileView('text')}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: mobileView === 'text' ? selectedPalette.border : 'transparent',
-                border: `1px solid ${selectedPalette.border}`,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                color: selectedPalette.text,
-                fontSize: '12px'
-              }}
-            >
-              Notes
-            </button>
+              {mobileView === 'canvas' ? (
+                /* Lattice dots icon */
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                  <circle cx="6" cy="6" r="1.5" fill="currentColor" />
+                  <circle cx="10" cy="6" r="1.5" fill="currentColor" />
+                  <circle cx="14" cy="6" r="1.5" fill="currentColor" />
+                  <circle cx="6" cy="10" r="1.5" fill="currentColor" />
+                  <circle cx="10" cy="10" r="1.5" fill="currentColor" />
+                  <circle cx="14" cy="10" r="1.5" fill="currentColor" />
+                  <circle cx="6" cy="14" r="1.5" fill="currentColor" />
+                  <circle cx="10" cy="14" r="1.5" fill="currentColor" />
+                  <circle cx="14" cy="14" r="1.5" fill="currentColor" />
+                </svg>
+              ) : (
+                /* Notes/text lines icon */
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                  <line x1="4" y1="6" x2="16" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <line x1="4" y1="14" x2="12" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -626,88 +785,115 @@ function App() {
           position: 'absolute',
           top: '50px',
           left: 0,
-          width: '220px',
+          width: '140px',
           backgroundColor: selectedPalette.background,
           border: `1px solid ${selectedPalette.border}`,
+          borderRadius: '6px',
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          zIndex: 100,
-          maxHeight: 'calc(100vh - 50px)',
-          overflow: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: '15px',
-          gap: '15px'
+          zIndex: 100
         }}>
-          {/* Lattice Type Toggle - Vertical */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0',
-            border: `1px solid ${selectedPalette.border}`,
-            borderRadius: '6px',
-            overflow: 'hidden'
-          }}>
-            <button
-              onClick={() => setLatticeType('square')}
-              style={{
-                padding: '12px',
-                backgroundColor: latticeType === 'square'
-                  ? selectedPalette.border
-                  : selectedPalette.background,
-                border: 'none',
-                cursor: 'pointer',
-                color: selectedPalette.text,
-                borderBottom: `1px solid ${selectedPalette.border}`,
-                transition: 'background-color 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setLatticeType('hexagonal')}
-              style={{
-                padding: '12px',
-                backgroundColor: latticeType === 'hexagonal'
-                  ? selectedPalette.border
-                  : selectedPalette.background,
-                border: 'none',
-                cursor: 'pointer',
-                color: selectedPalette.text,
-                transition: 'background-color 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M10 3 L16 6.5 L16 13.5 L10 17 L4 13.5 L4 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
-              </svg>
-            </button>
-          </div>
+          {/* Lattice Type Toggle (mobile only) */}
+          {isMobile && (
+            <>
+              <button
+                onClick={() => {
+                  setLatticeType('square');
+                  setIsSidebarOpen(false);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  backgroundColor: latticeType === 'square' ? selectedPalette.border : selectedPalette.background,
+                  border: 'none',
+                  borderBottom: `1px solid ${selectedPalette.border}`,
+                  cursor: 'pointer',
+                  color: selectedPalette.text,
+                  transition: 'background-color 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  outline: 'none',
+                  borderTopLeftRadius: '5px',
+                  borderTopRightRadius: '5px'
+                }}
+                onMouseOver={(e) => {
+                  if (latticeType !== 'square') {
+                    e.currentTarget.style.backgroundColor = selectedPalette.border;
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (latticeType !== 'square') {
+                    e.currentTarget.style.backgroundColor = selectedPalette.background;
+                  }
+                }}
+                title="Square lattice"
+              >
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                  <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              </button>
+              <button
+                onClick={() => {
+                  setLatticeType('hexagonal');
+                  setIsSidebarOpen(false);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  backgroundColor: latticeType === 'hexagonal' ? selectedPalette.border : selectedPalette.background,
+                  border: 'none',
+                  borderBottom: `1px solid ${selectedPalette.border}`,
+                  cursor: 'pointer',
+                  color: selectedPalette.text,
+                  transition: 'background-color 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  outline: 'none'
+                }}
+                onMouseOver={(e) => {
+                  if (latticeType !== 'hexagonal') {
+                    e.currentTarget.style.backgroundColor = selectedPalette.border;
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (latticeType !== 'hexagonal') {
+                    e.currentTarget.style.backgroundColor = selectedPalette.background;
+                  }
+                }}
+                title="Hexagonal lattice"
+              >
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                  <path d="M 10 3 L 15.5 6.5 L 15.5 13.5 L 10 17 L 4.5 13.5 L 4.5 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
+                </svg>
+              </button>
+            </>
+          )}
 
-          {/* Center View Button */}
+          {/* Undo */}
           <button
             onClick={() => {
-              // This will be handled by a callback from LatticeCanvas
-              const event = new CustomEvent('centerView');
+              const event = new CustomEvent('undoPoints');
               window.dispatchEvent(event);
+              setIsSidebarOpen(false);
             }}
             style={{
-              padding: '12px',
+              width: '100%',
+              padding: '10px 12px',
               backgroundColor: selectedPalette.background,
-              border: `1px solid ${selectedPalette.border}`,
-              borderRadius: '6px',
+              border: 'none',
+              borderBottom: `1px solid ${selectedPalette.border}`,
               cursor: 'pointer',
               color: selectedPalette.text,
               transition: 'background-color 0.15s',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              gap: '8px',
+              outline: 'none',
+              ...(isMobile ? {} : { borderTopLeftRadius: '5px', borderTopRightRadius: '5px' })
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -715,38 +901,34 @@ function App() {
             onMouseOut={(e) => {
               e.currentTarget.style.backgroundColor = selectedPalette.background;
             }}
-            title="Center and fit polytope"
+            title="Undo"
           >
-            {/* Four corners icon */}
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              {/* Top-left corner */}
-              <path d="M 3 3 L 3 7 M 3 3 L 7 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              {/* Top-right corner */}
-              <path d="M 17 3 L 17 7 M 17 3 L 13 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              {/* Bottom-left corner */}
-              <path d="M 3 17 L 3 13 M 3 17 L 7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              {/* Bottom-right corner */}
-              <path d="M 17 17 L 17 13 M 17 17 L 13 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M 7 7 L 4 10 L 7 13 M 4 10 L 14 10 C 15.5 10 17 11.5 17 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </svg>
           </button>
 
-          {/* Clear Button */}
+          {/* Redo */}
           <button
             onClick={() => {
-              const event = new CustomEvent('clearPoints');
+              const event = new CustomEvent('redoPoints');
               window.dispatchEvent(event);
+              setIsSidebarOpen(false);
             }}
             style={{
-              padding: '12px',
+              width: '100%',
+              padding: '10px 12px',
               backgroundColor: selectedPalette.background,
-              border: `1px solid ${selectedPalette.border}`,
-              borderRadius: '6px',
+              border: 'none',
+              borderBottom: `1px solid ${selectedPalette.border}`,
               cursor: 'pointer',
               color: selectedPalette.text,
               transition: 'background-color 0.15s',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              gap: '8px',
+              outline: 'none'
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -754,98 +936,33 @@ function App() {
             onMouseOut={(e) => {
               e.currentTarget.style.backgroundColor = selectedPalette.background;
             }}
-            title="Clear all points"
+            title="Redo"
           >
-            {/* X icon */}
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M 5 5 L 15 15 M 15 5 L 5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M 13 7 L 16 10 L 13 13 M 16 10 L 6 10 C 4.5 10 3 11.5 3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </svg>
           </button>
 
-          {/* Undo/Redo Buttons */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0',
-            border: `1px solid ${selectedPalette.border}`,
-            borderRadius: '6px',
-            overflow: 'hidden'
-          }}>
-            <button
-              onClick={() => {
-                const event = new CustomEvent('undoPoints');
-                window.dispatchEvent(event);
-              }}
-              style={{
-                padding: '12px',
-                backgroundColor: selectedPalette.background,
-                border: 'none',
-                borderBottom: `1px solid ${selectedPalette.border}`,
-                cursor: 'pointer',
-                color: selectedPalette.text,
-                transition: 'background-color 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = selectedPalette.border;
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = selectedPalette.background;
-              }}
-              title="Undo"
-            >
-              {/* Undo icon - curved arrow left */}
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M 7 7 L 4 10 L 7 13 M 4 10 L 14 10 C 15.5 10 17 11.5 17 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-              </svg>
-            </button>
-            <button
-              onClick={() => {
-                const event = new CustomEvent('redoPoints');
-                window.dispatchEvent(event);
-              }}
-              style={{
-                padding: '12px',
-                backgroundColor: selectedPalette.background,
-                border: 'none',
-                cursor: 'pointer',
-                color: selectedPalette.text,
-                transition: 'background-color 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor = selectedPalette.border;
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor = selectedPalette.background;
-              }}
-              title="Redo"
-            >
-              {/* Redo icon - curved arrow right */}
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M 13 7 L 16 10 L 13 13 M 16 10 L 6 10 C 4.5 10 3 11.5 3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Save Button */}
+          {/* Save */}
           <button
-            onClick={handleSavePolytope}
+            onClick={() => {
+              handleSavePolytope();
+              setIsSidebarOpen(false);
+            }}
             style={{
-              padding: '12px',
+              width: '100%',
+              padding: '10px 12px',
               backgroundColor: selectedPalette.background,
-              border: `1px solid ${selectedPalette.border}`,
-              borderRadius: '6px',
+              border: 'none',
+              borderBottom: `1px solid ${selectedPalette.border}`,
               cursor: 'pointer',
               color: selectedPalette.text,
               transition: 'background-color 0.15s',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              gap: '8px',
+              outline: 'none'
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -855,28 +972,31 @@ function App() {
             }}
             title="Save polytope"
           >
-            {/* Save icon (floppy disk) */}
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
               <path d="M 4 4 L 4 16 L 16 16 L 16 6 L 14 4 Z M 7 4 L 7 8 L 13 8 L 13 4" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
               <rect x="7" y="11" width="6" height="3" stroke="currentColor" strokeWidth="1.8" fill="none" />
             </svg>
           </button>
 
-          {/* Load Button */}
+          {/* Load */}
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setIsLoadDropdownOpen(!isLoadDropdownOpen)}
               style={{
-                padding: '12px',
+                width: '100%',
+                padding: '10px 12px',
                 backgroundColor: selectedPalette.background,
-                border: `1px solid ${selectedPalette.border}`,
-                borderRadius: '6px',
+                border: 'none',
                 cursor: 'pointer',
                 color: selectedPalette.text,
                 transition: 'background-color 0.15s',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                gap: '8px',
+                outline: 'none',
+                borderBottomLeftRadius: '5px',
+                borderBottomRightRadius: '5px'
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -886,8 +1006,7 @@ function App() {
               }}
               title="Load polytope"
             >
-              {/* Load icon (folder) */}
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
                 <path d="M 3 6 L 3 16 L 17 16 L 17 6 L 10 6 L 8 4 L 3 4 Z" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
@@ -896,8 +1015,9 @@ function App() {
             {isLoadDropdownOpen && (
               <div style={{
                 position: 'absolute',
-                left: '70px',
+                left: '100%',
                 top: '0',
+                marginLeft: '4px',
                 backgroundColor: selectedPalette.background,
                 border: `1px solid ${selectedPalette.border}`,
                 borderRadius: '6px',
@@ -1003,36 +1123,35 @@ function App() {
           borderRadius: isMobile ? '0' : '6px',
           backgroundColor: selectedPalette.background,
           display: isMobile ? (mobileView === 'text' ? 'flex' : 'none') : 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
-          {/* Header - Edit button (development only) */}
+          {/* Edit button (development only) - positioned in top right */}
           {!import.meta.env.PROD && (
-            <div style={{
-              padding: '12px 15px',
-              borderBottom: `1px solid ${selectedPalette.border}`,
-              display: 'flex',
-              justifyContent: 'flex-end',
-              alignItems: 'center'
-            }}>
-              <button
-                onClick={() => setIsEditMode(!isEditMode)}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: isEditMode ? selectedPalette.border : selectedPalette.background,
-                  border: `1px solid ${selectedPalette.border}`,
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  color: selectedPalette.text,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  fontWeight: '600',
-                  transition: 'background-color 0.15s'
-                }}
-              >
-                {isEditMode ? 'View' : 'Edit'}
-              </button>
-            </div>
+            <button
+              onClick={() => setIsEditMode(!isEditMode)}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                padding: '6px 8px',
+                backgroundColor: 'transparent',
+                border: `1px solid ${selectedPalette.border}`,
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '18px',
+                color: selectedPalette.text,
+                opacity: 0.6,
+                transition: 'opacity 0.15s',
+                zIndex: 10
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+              title={isEditMode ? 'View mode' : 'Edit mode'}
+            >
+              {isEditMode ? '×' : '✎'}
+            </button>
           )}
 
           {isEditMode ? (
