@@ -40,3 +40,10 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Remove persistent button focus/active states on mobile */
+button:focus,
+button:active,
+button:focus-visible {
+  outline: none !important;
+}

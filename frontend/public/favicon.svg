@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="16" fill="#fff4e6"/>
+
+  <!-- Hexagon (representing a toric polytope) - larger -->
+  <path d="M 16 4 L 26 10 L 26 22 L 16 28 L 6 22 L 6 10 Z"
+        fill="none"
+        stroke="#cc8844"
+        stroke-width="2.5"/>
+
+  <!-- Single center lattice point -->
+  <circle cx="16" cy="16" r="2.5" fill="#d4a574"/>
+</svg>

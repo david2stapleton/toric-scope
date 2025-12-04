@@ -104,6 +104,23 @@ type ModeTextContent = Record<Mode, string>;
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+// UI Constants
+const BORDER_THICKNESS = 2;
+const BORDER_RADIUS = 6;
+const BORDER_RADIUS_INNER = 4;
+const BORDER_OPACITY = 0.7;
+const BUTTON_HEIGHT = 32;
+const BUTTON_SPACING = 8;
+const ICON_SIZE = 20;
+
+// Helper function to convert hex color to rgba with transparency
+const hexToRgba = (hex: string, alpha: number) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 function App() {
   const [selectedPalette] = useState<ColorPalette>(palettes[0]);
   const [latticeType, setLatticeType] = useState<LatticeType>('square');
@@ -370,29 +387,44 @@ function App() {
       {/* Unified Top Navigation Bar */}
       <div style={{
         height: '50px',
-        borderBottom: `1px solid ${selectedPalette.border}`,
+        borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0 15px',
         backgroundColor: selectedPalette.background,
-        gap: '12px'
+        gap: `${BUTTON_SPACING}px`
       }}>
         {/* Left side: Hamburger + Lattice Toggle + Center + Clear */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: `${BUTTON_SPACING}px`, alignItems: 'center' }}>
           {/* Hamburger button */}
           <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            onClick={(e) => {
+              if (isSidebarOpen) {
+                setIsLoadDropdownOpen(false);
+              }
+              setIsSidebarOpen(!isSidebarOpen);
+              e.currentTarget.blur();
+            }}
+            onTouchEnd={(e) => {
+              setTimeout(() => e.currentTarget.blur(), 0);
+            }}
             style={{
-              padding: '8px',
-              backgroundColor: 'transparent',
-              border: 'none',
+              height: `${BUTTON_HEIGHT}px`,
+              padding: '0 10px',
+              backgroundColor: selectedPalette.background,
+              border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+              borderRadius: `${BORDER_RADIUS}px`,
               cursor: 'pointer',
               color: selectedPalette.text,
-              outline: 'none'
+              outline: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent'
             }}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="3" y1="6" x2="21" y2="6" />
               <line x1="3" y1="12" x2="21" y2="12" />
               <line x1="3" y1="18" x2="21" y2="18" />
@@ -404,19 +436,26 @@ function App() {
             <div style={{
               display: 'flex',
               gap: '0',
-              border: `1px solid ${selectedPalette.border}`,
-              borderRadius: '6px',
+              border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+              borderRadius: `${BORDER_RADIUS}px`,
               overflow: 'hidden'
             }}>
             <button
-              onClick={() => setLatticeType('square')}
+              onClick={(e) => {
+                setLatticeType('square');
+                e.currentTarget.blur();
+              }}
+              onTouchEnd={(e) => {
+                setTimeout(() => e.currentTarget.blur(), 0);
+              }}
               style={{
-                padding: '6px 10px',
+                height: `${BUTTON_HEIGHT}px`,
+                padding: '0 10px',
                 backgroundColor: latticeType === 'square'
                   ? selectedPalette.border
                   : selectedPalette.background,
                 border: 'none',
-                borderRight: `1px solid ${selectedPalette.border}`,
+                borderRight: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                 cursor: 'pointer',
                 color: selectedPalette.text,
                 transition: 'background-color 0.15s',
@@ -424,19 +463,27 @@ function App() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 outline: 'none',
-                borderTopLeftRadius: '5px',
-                borderBottomLeftRadius: '5px'
+                borderTopLeftRadius: `${BORDER_RADIUS_INNER}px`,
+                borderBottomLeftRadius: `${BORDER_RADIUS_INNER}px`,
+                WebkitTapHighlightColor: 'transparent'
               }}
               title="Square lattice"
             >
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 20 20" fill="none">
                 <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
               </svg>
             </button>
             <button
-              onClick={() => setLatticeType('hexagonal')}
+              onClick={(e) => {
+                setLatticeType('hexagonal');
+                e.currentTarget.blur();
+              }}
+              onTouchEnd={(e) => {
+                setTimeout(() => e.currentTarget.blur(), 0);
+              }}
               style={{
-                padding: '6px 10px',
+                height: `${BUTTON_HEIGHT}px`,
+                padding: '0 10px',
                 backgroundColor: latticeType === 'hexagonal'
                   ? selectedPalette.border
                   : selectedPalette.background,
@@ -448,12 +495,13 @@ function App() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 outline: 'none',
-                borderTopRightRadius: '5px',
-                borderBottomRightRadius: '5px'
+                borderTopRightRadius: `${BORDER_RADIUS_INNER}px`,
+                borderBottomRightRadius: `${BORDER_RADIUS_INNER}px`,
+                WebkitTapHighlightColor: 'transparent'
               }}
               title="Hexagonal lattice"
             >
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 20 20" fill="none">
                 <path d="M 10 3 L 15.5 6.5 L 15.5 13.5 L 10 17 L 4.5 13.5 L 4.5 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
               </svg>
             </button>
@@ -462,32 +510,53 @@ function App() {
 
           {/* Center Button */}
           <button
-            onClick={() => {
-              const event = new CustomEvent('centerView');
-              window.dispatchEvent(event);
+            disabled={isMobile && mobileView === 'text'}
+            onClick={(e) => {
+              if (!(isMobile && mobileView === 'text')) {
+                const event = new CustomEvent('centerView');
+                window.dispatchEvent(event);
+                e.currentTarget.blur();
+              }
+            }}
+            onTouchStart={(e) => {
+              if (!(isMobile && mobileView === 'text')) {
+                e.currentTarget.style.backgroundColor = selectedPalette.border;
+              }
+            }}
+            onTouchEnd={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.background;
+              e.currentTarget.blur();
             }}
             style={{
-              padding: '6px 10px',
+              height: `${BUTTON_HEIGHT}px`,
+              padding: '0 10px',
               backgroundColor: selectedPalette.background,
-              border: `1px solid ${selectedPalette.border}`,
-              borderRadius: '6px',
-              cursor: 'pointer',
+              border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+              borderRadius: `${BORDER_RADIUS}px`,
+              cursor: (isMobile && mobileView === 'text') ? 'not-allowed' : 'pointer',
               color: selectedPalette.text,
-              transition: 'background-color 0.15s',
+              opacity: (isMobile && mobileView === 'text') ? 0.5 : 1,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              outline: 'none'
+              outline: 'none',
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none',
+              touchAction: 'manipulation'
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = selectedPalette.border;
+              if (!isMobile && !(isMobile && mobileView === 'text')) {
+                e.currentTarget.style.backgroundColor = selectedPalette.border;
+              }
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = selectedPalette.background;
+              if (!isMobile) {
+                e.currentTarget.style.backgroundColor = selectedPalette.background;
+              }
             }}
             title="Center and fit polytope"
           >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 20 20" fill="none">
               <path d="M 3 3 L 3 7 M 3 3 L 7 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               <path d="M 17 3 L 17 7 M 17 3 L 13 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               <path d="M 3 17 L 3 13 M 3 17 L 7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -497,55 +566,77 @@ function App() {
 
           {/* Clear Button */}
           <button
-            onClick={() => {
-              const event = new CustomEvent('clearPoints');
-              window.dispatchEvent(event);
+            disabled={isMobile && mobileView === 'text'}
+            onClick={(e) => {
+              if (!(isMobile && mobileView === 'text')) {
+                const event = new CustomEvent('clearPoints');
+                window.dispatchEvent(event);
+                e.currentTarget.blur();
+              }
+            }}
+            onTouchStart={(e) => {
+              if (!(isMobile && mobileView === 'text')) {
+                e.currentTarget.style.backgroundColor = selectedPalette.border;
+              }
+            }}
+            onTouchEnd={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.background;
+              e.currentTarget.blur();
             }}
             style={{
-              padding: '6px 10px',
+              height: `${BUTTON_HEIGHT}px`,
+              padding: '0 10px',
               backgroundColor: selectedPalette.background,
-              border: `1px solid ${selectedPalette.border}`,
-              borderRadius: '6px',
-              cursor: 'pointer',
+              border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+              borderRadius: `${BORDER_RADIUS}px`,
+              cursor: (isMobile && mobileView === 'text') ? 'not-allowed' : 'pointer',
               color: selectedPalette.text,
-              transition: 'background-color 0.15s',
+              opacity: (isMobile && mobileView === 'text') ? 0.5 : 1,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              outline: 'none'
+              outline: 'none',
+              WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none',
+              touchAction: 'manipulation'
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = selectedPalette.border;
+              if (!isMobile && !(isMobile && mobileView === 'text')) {
+                e.currentTarget.style.backgroundColor = selectedPalette.border;
+              }
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = selectedPalette.background;
+              if (!isMobile) {
+                e.currentTarget.style.backgroundColor = selectedPalette.background;
+              }
             }}
             title="Clear all points"
           >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 20 20" fill="none">
               <path d="M 5 5 L 15 15 M 15 5 L 5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
             </svg>
           </button>
         </div>
 
         {/* Right side: Mode Dropdown + View Toggle (mobile) */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: `${BUTTON_SPACING}px`, alignItems: 'center' }}>
           {/* Mode Dropdown */}
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
               style={{
-                padding: isMobile ? '6px 10px' : '8px 12px',
+                height: `${BUTTON_HEIGHT}px`,
+                padding: '0 12px',
                 backgroundColor: selectedPalette.background,
-                border: `1px solid ${selectedPalette.border}`,
-                borderRadius: '6px',
+                border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+                borderRadius: `${BORDER_RADIUS}px`,
                 cursor: 'pointer',
                 display: 'flex',
-                justifyContent: 'space-between',
+                justifyContent: 'flex-end',
                 alignItems: 'center',
                 fontSize: '12px',
                 color: selectedPalette.text,
-                textAlign: 'left',
+                textAlign: 'right',
                 gap: '6px',
                 minWidth: isMobile ? '100px' : '140px',
                 outline: 'none'
@@ -565,10 +656,10 @@ function App() {
                 position: 'absolute',
                 top: '100%',
                 right: 0,
-                marginTop: '4px',
+                marginTop: '2px',
                 backgroundColor: selectedPalette.background,
-                border: `1px solid ${selectedPalette.border}`,
-                borderRadius: '6px',
+                border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+                borderRadius: `${BORDER_RADIUS}px`,
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 zIndex: 1000,
                 overflow: 'hidden',
@@ -586,14 +677,14 @@ function App() {
                       ? selectedPalette.border
                       : selectedPalette.background,
                     border: 'none',
-                    borderBottom: `1px solid ${selectedPalette.border}`,
+                    borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                     cursor: 'pointer',
                     textAlign: 'left',
                     fontSize: '12px',
                     color: selectedPalette.text,
                     transition: 'background-color 0.1s',
-                    borderTopLeftRadius: '5px',
-                    borderTopRightRadius: '5px',
+                    borderTopLeftRadius: `${BORDER_RADIUS_INNER}px`,
+                    borderTopRightRadius: `${BORDER_RADIUS_INNER}px`,
                     outline: 'none'
                   }}
                   onMouseOver={(e) => {
@@ -619,7 +710,7 @@ function App() {
                       ? selectedPalette.border
                       : selectedPalette.background,
                     border: 'none',
-                    borderBottom: `1px solid ${selectedPalette.border}`,
+                    borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                     cursor: 'pointer',
                     textAlign: 'left',
                     fontSize: '12px',
@@ -649,7 +740,7 @@ function App() {
                       ? selectedPalette.border
                       : selectedPalette.background,
                     border: 'none',
-                    borderBottom: `1px solid ${selectedPalette.border}`,
+                    borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                     cursor: 'pointer',
                     textAlign: 'left',
                     fontSize: '12px',
@@ -684,8 +775,8 @@ function App() {
                     fontSize: '12px',
                     color: selectedPalette.text,
                     transition: 'background-color 0.1s',
-                    borderBottomLeftRadius: '5px',
-                    borderBottomRightRadius: '5px',
+                    borderBottomLeftRadius: `${BORDER_RADIUS_INNER}px`,
+                    borderBottomRightRadius: `${BORDER_RADIUS_INNER}px`,
                     outline: 'none'
                   }}
                   onMouseOver={(e) => {
@@ -702,71 +793,74 @@ function App() {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Right side: View toggle (mobile only) */}
-        {isMobile && (
-          <div
-            onClick={() => setMobileView(mobileView === 'canvas' ? 'text' : 'canvas')}
-            style={{
-              position: 'relative',
-              width: '70px',
-              height: '32px',
-              backgroundColor: selectedPalette.border,
-              borderRadius: '16px',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              border: `1px solid ${selectedPalette.border}`
-            }}
-            title={mobileView === 'canvas' ? 'Switch to Notes' : 'Switch to Lattice'}
-          >
-            {/* Sliding knob */}
+          {/* View toggle (mobile only) */}
+          {isMobile && (
             <div
+              onClick={() => setMobileView(mobileView === 'canvas' ? 'text' : 'canvas')}
               style={{
-                position: 'absolute',
-                top: '2px',
-                left: mobileView === 'canvas' ? '2px' : '36px',
-                width: '30px',
-                height: '26px',
-                backgroundColor: selectedPalette.background,
-                borderRadius: '13px',
-                transition: 'left 0.2s ease-in-out',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                position: 'relative',
+                width: '70px',
+                height: `${BUTTON_HEIGHT}px`,
+                backgroundColor: selectedPalette.border,
+                borderRadius: '16px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`
               }}
+              title={mobileView === 'canvas' ? 'Switch to Notes' : 'Switch to Lattice'}
             >
-              {mobileView === 'canvas' ? (
-                /* Lattice dots icon */
-                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                  <circle cx="6" cy="6" r="1.5" fill="currentColor" />
-                  <circle cx="10" cy="6" r="1.5" fill="currentColor" />
-                  <circle cx="14" cy="6" r="1.5" fill="currentColor" />
-                  <circle cx="6" cy="10" r="1.5" fill="currentColor" />
-                  <circle cx="10" cy="10" r="1.5" fill="currentColor" />
-                  <circle cx="14" cy="10" r="1.5" fill="currentColor" />
-                  <circle cx="6" cy="14" r="1.5" fill="currentColor" />
-                  <circle cx="10" cy="14" r="1.5" fill="currentColor" />
-                  <circle cx="14" cy="14" r="1.5" fill="currentColor" />
-                </svg>
-              ) : (
-                /* Notes/text lines icon */
-                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                  <line x1="4" y1="6" x2="16" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  <line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  <line x1="4" y1="14" x2="12" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              )}
+              {/* Sliding knob */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '2px',
+                  left: mobileView === 'canvas' ? '2px' : '36px',
+                  width: '30px',
+                  height: `${BUTTON_HEIGHT - 8}px`,
+                  backgroundColor: selectedPalette.background,
+                  borderRadius: `${(BUTTON_HEIGHT - 8) / 2}px`,
+                  transition: 'left 0.2s ease-in-out',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}
+              >
+                {mobileView === 'canvas' ? (
+                  /* Lattice dots icon */
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                    <circle cx="6" cy="6" r="1.5" fill="currentColor" />
+                    <circle cx="10" cy="6" r="1.5" fill="currentColor" />
+                    <circle cx="14" cy="6" r="1.5" fill="currentColor" />
+                    <circle cx="6" cy="10" r="1.5" fill="currentColor" />
+                    <circle cx="10" cy="10" r="1.5" fill="currentColor" />
+                    <circle cx="14" cy="10" r="1.5" fill="currentColor" />
+                    <circle cx="6" cy="14" r="1.5" fill="currentColor" />
+                    <circle cx="10" cy="14" r="1.5" fill="currentColor" />
+                    <circle cx="14" cy="14" r="1.5" fill="currentColor" />
+                  </svg>
+                ) : (
+                  /* Notes/text lines icon */
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                    <line x1="4" y1="6" x2="16" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    <line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    <line x1="4" y1="14" x2="12" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Backdrop for hamburger menu */}
       {isSidebarOpen && (
         <div
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => {
+            setIsSidebarOpen(false);
+            setIsLoadDropdownOpen(false);
+          }}
           style={{
             position: 'fixed',
             top: '50px',
@@ -785,10 +879,10 @@ function App() {
           position: 'absolute',
           top: '50px',
           left: 0,
-          width: '140px',
+          width: '60px',
           backgroundColor: selectedPalette.background,
-          border: `1px solid ${selectedPalette.border}`,
-          borderRadius: '6px',
+          border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+          borderRadius: `${BORDER_RADIUS}px`,
           boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           zIndex: 100
         }}>
@@ -799,13 +893,14 @@ function App() {
                 onClick={() => {
                   setLatticeType('square');
                   setIsSidebarOpen(false);
+                  setIsLoadDropdownOpen(false);
                 }}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   backgroundColor: latticeType === 'square' ? selectedPalette.border : selectedPalette.background,
                   border: 'none',
-                  borderBottom: `1px solid ${selectedPalette.border}`,
+                  borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                   cursor: 'pointer',
                   color: selectedPalette.text,
                   transition: 'background-color 0.15s',
@@ -814,8 +909,8 @@ function App() {
                   justifyContent: 'center',
                   gap: '8px',
                   outline: 'none',
-                  borderTopLeftRadius: '5px',
-                  borderTopRightRadius: '5px'
+                  borderTopLeftRadius: `${BORDER_RADIUS_INNER}px`,
+                  borderTopRightRadius: `${BORDER_RADIUS_INNER}px`
                 }}
                 onMouseOver={(e) => {
                   if (latticeType !== 'square') {
@@ -837,13 +932,14 @@ function App() {
                 onClick={() => {
                   setLatticeType('hexagonal');
                   setIsSidebarOpen(false);
+                  setIsLoadDropdownOpen(false);
                 }}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
                   backgroundColor: latticeType === 'hexagonal' ? selectedPalette.border : selectedPalette.background,
                   border: 'none',
-                  borderBottom: `1px solid ${selectedPalette.border}`,
+                  borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                   cursor: 'pointer',
                   color: selectedPalette.text,
                   transition: 'background-color 0.15s',
@@ -878,13 +974,14 @@ function App() {
               const event = new CustomEvent('undoPoints');
               window.dispatchEvent(event);
               setIsSidebarOpen(false);
+              setIsLoadDropdownOpen(false);
             }}
             style={{
               width: '100%',
               padding: '10px 12px',
               backgroundColor: selectedPalette.background,
               border: 'none',
-              borderBottom: `1px solid ${selectedPalette.border}`,
+              borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
               cursor: 'pointer',
               color: selectedPalette.text,
               transition: 'background-color 0.15s',
@@ -893,7 +990,7 @@ function App() {
               justifyContent: 'center',
               gap: '8px',
               outline: 'none',
-              ...(isMobile ? {} : { borderTopLeftRadius: '5px', borderTopRightRadius: '5px' })
+              ...(isMobile ? {} : { borderTopLeftRadius: `${BORDER_RADIUS_INNER}px`, borderTopRightRadius: `${BORDER_RADIUS_INNER}px` })
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -914,13 +1011,14 @@ function App() {
               const event = new CustomEvent('redoPoints');
               window.dispatchEvent(event);
               setIsSidebarOpen(false);
+              setIsLoadDropdownOpen(false);
             }}
             style={{
               width: '100%',
               padding: '10px 12px',
               backgroundColor: selectedPalette.background,
               border: 'none',
-              borderBottom: `1px solid ${selectedPalette.border}`,
+              borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
               cursor: 'pointer',
               color: selectedPalette.text,
               transition: 'background-color 0.15s',
@@ -948,13 +1046,14 @@ function App() {
             onClick={() => {
               handleSavePolytope();
               setIsSidebarOpen(false);
+              setIsLoadDropdownOpen(false);
             }}
             style={{
               width: '100%',
               padding: '10px 12px',
               backgroundColor: selectedPalette.background,
               border: 'none',
-              borderBottom: `1px solid ${selectedPalette.border}`,
+              borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
               cursor: 'pointer',
               color: selectedPalette.text,
               transition: 'background-color 0.15s',
@@ -995,8 +1094,8 @@ function App() {
                 justifyContent: 'center',
                 gap: '8px',
                 outline: 'none',
-                borderBottomLeftRadius: '5px',
-                borderBottomRightRadius: '5px'
+                borderBottomLeftRadius: `${BORDER_RADIUS_INNER}px`,
+                borderBottomRightRadius: `${BORDER_RADIUS_INNER}px`
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -1019,8 +1118,8 @@ function App() {
                 top: '0',
                 marginLeft: '4px',
                 backgroundColor: selectedPalette.background,
-                border: `1px solid ${selectedPalette.border}`,
-                borderRadius: '6px',
+                border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+                borderRadius: `${BORDER_RADIUS}px`,
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 zIndex: 1000,
                 minWidth: '200px',
@@ -1046,7 +1145,7 @@ function App() {
                         padding: '10px 12px',
                         backgroundColor: selectedPalette.background,
                         border: 'none',
-                        borderBottom: `1px solid ${selectedPalette.border}`,
+                        borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                         cursor: 'pointer',
                         textAlign: 'left',
                         fontSize: '12px',
@@ -1119,8 +1218,8 @@ function App() {
           flex: 1,
           minHeight: 0,
           height: '100%',
-          border: isMobile ? 'none' : `1px solid ${selectedPalette.border}`,
-          borderRadius: isMobile ? '0' : '6px',
+          border: isMobile ? 'none' : `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+          borderRadius: isMobile ? '0' : `${BORDER_RADIUS}px`,
           backgroundColor: selectedPalette.background,
           display: isMobile ? (mobileView === 'text' ? 'flex' : 'none') : 'flex',
           flexDirection: 'column',
@@ -1137,8 +1236,8 @@ function App() {
                 right: '10px',
                 padding: '6px 8px',
                 backgroundColor: 'transparent',
-                border: `1px solid ${selectedPalette.border}`,
-                borderRadius: '4px',
+                border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+                borderRadius: `${BORDER_RADIUS_INNER}px`,
                 cursor: 'pointer',
                 fontSize: '18px',
                 color: selectedPalette.text,
