@@ -5,6 +5,7 @@ declare module 'react-katex' {
     math: string;
     errorColor?: string;
     renderError?: (error: Error) => React.ReactNode;
+    macros?: Record<string, string>;
   }
 
   export class InlineMath extends Component<KatexProps> {}

@@ -145,6 +145,9 @@ function App() {
     'fans': ''
   });
 
+  // Polytope statistics for template interpolation
+  const [polytopeStats, setPolytopeStats] = useState<Record<string, string | number>>({});
+
   // Detect mobile screen size
   useEffect(() => {
     const checkMobile = () => {
@@ -154,6 +157,15 @@ function App() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Listen for polytope stats updates from LatticeCanvas
+  useEffect(() => {
+    const handler = (event: any) => {
+      setPolytopeStats(event.detail);
+    };
+    window.addEventListener('polytopeStatsUpdate', handler);
+    return () => window.removeEventListener('polytopeStatsUpdate', handler);
   }, []);
 
   // Swipe gesture handling for mobile
@@ -411,7 +423,7 @@ function App() {
             }}
             style={{
               height: `${BUTTON_HEIGHT}px`,
-              padding: '0 10px',
+              padding: '0 12px',
               backgroundColor: selectedPalette.background,
               border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
               borderRadius: `${BORDER_RADIUS}px`,
@@ -433,80 +445,51 @@ function App() {
 
           {/* Lattice Type Toggle - Horizontal (desktop only) */}
           {!isMobile && (
-            <div style={{
-              display: 'flex',
-              gap: '0',
-              border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
-              borderRadius: `${BORDER_RADIUS}px`,
-              overflow: 'hidden'
-            }}>
-            <button
-              onClick={(e) => {
-                setLatticeType('square');
-                e.currentTarget.blur();
-              }}
-              onTouchEnd={(e) => {
-                setTimeout(() => e.currentTarget.blur(), 0);
-              }}
+            <div
+              onClick={() => setLatticeType(latticeType === 'square' ? 'hexagonal' : 'square')}
               style={{
+                position: 'relative',
+                width: '70px',
                 height: `${BUTTON_HEIGHT}px`,
-                padding: '0 10px',
-                backgroundColor: latticeType === 'square'
-                  ? selectedPalette.border
-                  : selectedPalette.background,
-                border: 'none',
-                borderRight: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+                backgroundColor: hexToRgba(selectedPalette.border, BORDER_OPACITY),
+                borderRadius: '16px',
                 cursor: 'pointer',
-                color: selectedPalette.text,
-                transition: 'background-color 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                outline: 'none',
-                borderTopLeftRadius: `${BORDER_RADIUS_INNER}px`,
-                borderBottomLeftRadius: `${BORDER_RADIUS_INNER}px`,
-                WebkitTapHighlightColor: 'transparent'
+                transition: 'background-color 0.2s',
+                border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`
               }}
-              title="Square lattice"
+              title={latticeType === 'square' ? 'Square lattice (click for hexagonal)' : 'Hexagonal lattice (click for square)'}
             >
-              <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 20 20" fill="none">
-                <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => {
-                setLatticeType('hexagonal');
-                e.currentTarget.blur();
-              }}
-              onTouchEnd={(e) => {
-                setTimeout(() => e.currentTarget.blur(), 0);
-              }}
-              style={{
-                height: `${BUTTON_HEIGHT}px`,
-                padding: '0 10px',
-                backgroundColor: latticeType === 'hexagonal'
-                  ? selectedPalette.border
-                  : selectedPalette.background,
-                border: 'none',
-                cursor: 'pointer',
-                color: selectedPalette.text,
-                transition: 'background-color 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                outline: 'none',
-                borderTopRightRadius: `${BORDER_RADIUS_INNER}px`,
-                borderBottomRightRadius: `${BORDER_RADIUS_INNER}px`,
-                WebkitTapHighlightColor: 'transparent'
-              }}
-              title="Hexagonal lattice"
-            >
-              <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 20 20" fill="none">
-                <path d="M 10 3 L 15.5 6.5 L 15.5 13.5 L 10 17 L 4.5 13.5 L 4.5 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
-              </svg>
-            </button>
-          </div>
-)}
+              {/* Sliding knob */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '2px',
+                  left: latticeType === 'square' ? '2px' : '36px',
+                  width: '30px',
+                  height: `${BUTTON_HEIGHT - 8}px`,
+                  backgroundColor: selectedPalette.background,
+                  borderRadius: `${(BUTTON_HEIGHT - 8) / 2}px`,
+                  transition: 'left 0.2s ease-in-out',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}
+              >
+                {latticeType === 'square' ? (
+                  /* Square icon */
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                    <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
+                  </svg>
+                ) : (
+                  /* Hexagon icon */
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                    <path d="M 10 3 L 15.5 6.5 L 15.5 13.5 L 10 17 L 4.5 13.5 L 4.5 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Center Button */}
           <button
@@ -626,23 +609,22 @@ function App() {
               onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
               style={{
                 height: `${BUTTON_HEIGHT}px`,
-                padding: '0 12px',
+                padding: '0 10px',
                 backgroundColor: selectedPalette.background,
                 border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                 borderRadius: `${BORDER_RADIUS}px`,
                 cursor: 'pointer',
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
                 alignItems: 'center',
                 fontSize: '12px',
                 color: selectedPalette.text,
-                textAlign: 'right',
-                gap: '6px',
-                minWidth: isMobile ? '100px' : '140px',
+                gap: '8px',
+                minWidth: isMobile ? '90px' : '110px',
                 outline: 'none'
               }}
             >
-              <span>
+              <span style={{ flex: 1, textAlign: 'left' }}>
                 {mode === 'polytopes' ? 'Polytopes'
                   : mode === 'multiplicities' ? 'Multiplicities'
                   : mode === 'rings' ? 'Rings'
@@ -663,7 +645,7 @@ function App() {
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 zIndex: 1000,
                 overflow: 'hidden',
-                minWidth: isMobile ? '100px' : '140px'
+                minWidth: isMobile ? '90px' : '110px'
               }}>
                 <button
                   onClick={() => {
@@ -1281,7 +1263,7 @@ function App() {
               backgroundColor: selectedPalette.background
             }}>
               {modeTexts[mode] ? (
-                <LatexRenderer content={modeTexts[mode]} textColor={selectedPalette.text} palette={selectedPalette} />
+                <LatexRenderer content={modeTexts[mode]} textColor={selectedPalette.text} palette={selectedPalette} polytopeStats={polytopeStats} />
               ) : (
                 <div style={{
                   color: selectedPalette.text,

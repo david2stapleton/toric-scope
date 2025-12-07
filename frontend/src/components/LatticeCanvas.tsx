@@ -800,6 +800,40 @@ export default function LatticeCanvas({
     return () => window.removeEventListener('getSelectedPoints', handler);
   }, [selectedPoints]);
 
+  // Compute and dispatch polytope stats whenever selected points change
+  useEffect(() => {
+    const points = getSelectedPointsArray();
+    const hull = convexHull(points);
+
+    // Handle edge cases for edges and faces
+    let edges = 0;
+    let faces = 0;
+
+    if (hull.length === 0 || hull.length === 1) {
+      edges = 0;
+      faces = 0;
+    } else if (hull.length === 2) {
+      edges = 1;
+      faces = 0;
+    } else {
+      // 3 or more vertices form a polygon
+      edges = hull.length;
+      faces = 1;
+    }
+
+    const stats: Record<string, string | number> = {
+      vertices: hull.length,
+      edges: edges,
+      faces: faces,
+      points: points.length,
+      interior: interiorPoints.size,
+      boundary: edgePoints.size
+    };
+
+    const event = new CustomEvent('polytopeStatsUpdate', { detail: stats });
+    window.dispatchEvent(event);
+  }, [selectedPoints, edgePoints, interiorPoints]);
+
   // Listen for load polytope event
   useEffect(() => {
     const handler = (event: any) => {
@@ -920,7 +954,18 @@ export default function LatticeCanvas({
 
     // Draw convex hull first (so it's behind points)
     const selectedPointsArray = getSelectedPointsArray();
-    if (selectedPointsArray.length >= 3) {
+
+    if (selectedPointsArray.length === 2) {
+      // Draw edge between two vertices
+      ctx.strokeStyle = palette.hullStroke;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const p1 = latticeToCanvas(selectedPointsArray[0].x, selectedPointsArray[0].y);
+      const p2 = latticeToCanvas(selectedPointsArray[1].x, selectedPointsArray[1].y);
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    } else if (selectedPointsArray.length >= 3) {
       const hull = convexHull(selectedPointsArray);
 
       if (hull.length >= 3) {
