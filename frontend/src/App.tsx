@@ -2,6 +2,8 @@ import './App.css'
 import LatticeCanvas from './components/LatticeCanvas'
 import LatexRenderer from './components/LatexRenderer'
 import { useState, useEffect, useRef } from 'react'
+import type { BlinkState } from './types/blinkable'
+import type { PolytopeAttributes } from './types/attributes'
 
 export interface ColorPalette {
   name: string;
@@ -131,6 +133,7 @@ function App() {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [savedPolytopes, setSavedPolytopes] = useState<Array<{name: string, point_count: number}>>([]);
   const [isLoadDropdownOpen, setIsLoadDropdownOpen] = useState(false);
+  const [blinkState, setBlinkState] = useState<BlinkState | null>(null);
 
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -146,7 +149,7 @@ function App() {
   });
 
   // Polytope statistics for template interpolation
-  const [polytopeStats, setPolytopeStats] = useState<Record<string, string | number>>({});
+  const [polytopeStats, setPolytopeStats] = useState<PolytopeAttributes | undefined>(undefined);
 
   // Detect mobile screen size
   useEffect(() => {
@@ -312,6 +315,134 @@ function App() {
     window.addEventListener('loadPolytopeFromLink', handler);
     return () => window.removeEventListener('loadPolytopeFromLink', handler);
   }, []);
+
+  // Store animation parameters
+  const blinkRateRef = useRef(500);
+  const currentActionRef = useRef<string | null>(null);
+  const currentFeatureTypeRef = useRef<string | null>(null);
+
+  // Listen for polytope fact clicks from notes
+  useEffect(() => {
+    const handler = (event: any) => {
+      const { attribute, attributeIndex, action, params } = event.detail;
+      console.log('App received polytope fact click:', { attribute, attributeIndex, action, params });
+
+      // Extract blink rate from params (default 500ms)
+      const blinkRate = params && params.length > 0 ? params[0] : 500;
+
+      // Store the blink rate for when features arrive
+      blinkRateRef.current = blinkRate;
+
+      // Handle scoped actions
+      if (attribute) {
+        // Extract base attribute name (handle 'vertices.count' -> 'vertices')
+        const baseAttribute = attribute.split('.')[0];
+
+        // If index is specified (e.g., vertices[0]), apply action directly
+        if (attributeIndex !== null && attributeIndex !== undefined) {
+          const actionEvent = new CustomEvent('applyFeatureAction', {
+            detail: {
+              action,
+              featureType: baseAttribute,
+              index: attributeIndex
+            }
+          });
+          window.dispatchEvent(actionEvent);
+        }
+        // If no index (e.g., vertices), iterate through all features
+        else {
+          // Store action and feature type for animation loop
+          currentActionRef.current = action;
+          currentFeatureTypeRef.current = baseAttribute;
+
+          // Get all features to iterate through
+          const requestEvent = new CustomEvent('getBlinkableFeatures', {
+            detail: {
+              featureType: baseAttribute,
+              index: null  // Get all features
+            }
+          });
+          window.dispatchEvent(requestEvent);
+        }
+      } else {
+        // Handle global actions (no attribute specified)
+        console.log('Global action not yet implemented:', action);
+      }
+    };
+    window.addEventListener('polytopeFactClicked', handler);
+    return () => window.removeEventListener('polytopeFactClicked', handler);
+  }, [mode]);
+
+  // Listen for blinkable features from LatticeCanvas
+  useEffect(() => {
+    const handler = (event: any) => {
+      const { features } = event.detail;
+      console.log('Received blinkable features:', features);
+      if (features && features.length > 0) {
+        // Start from last index and go backward (safer for polytope toggling)
+        const startIndex = features.length - 1;
+
+        setBlinkState({
+          features,
+          currentIndex: startIndex,
+          blinkRate: blinkRateRef.current,
+          isPersistent: true  // Animation always shows visual feedback
+        });
+      }
+    };
+    window.addEventListener('blinkableFeaturesReady', handler);
+    return () => window.removeEventListener('blinkableFeaturesReady', handler);
+  }, []);
+
+  // Generic animation loop - iterates through features and applies actions
+  useEffect(() => {
+    if (!blinkState) return; // No animation running
+
+    const { features, currentIndex, blinkRate } = blinkState;
+    const currentFeature = features[currentIndex];
+    console.log('Animation: applying action to', currentFeature?.type, 'index:', currentIndex);
+
+    // Apply the action to the current feature
+    if (currentActionRef.current && currentFeatureTypeRef.current && currentFeature) {
+      // Extract the index from the feature ID (e.g., "vertex-0" -> 0)
+      const featureIndexMatch = currentFeature.id.match(/-(\d+)$/);
+      const featureIndex = featureIndexMatch ? parseInt(featureIndexMatch[1], 10) : null;
+
+      if (featureIndex !== null) {
+        console.log('Dispatching action:', currentActionRef.current, 'on', currentFeatureTypeRef.current, 'index:', featureIndex);
+        const actionEvent = new CustomEvent('applyFeatureAction', {
+          detail: {
+            action: currentActionRef.current,
+            featureType: currentFeatureTypeRef.current,
+            index: featureIndex
+          }
+        });
+        window.dispatchEvent(actionEvent);
+      }
+    }
+
+    // Set up timer to move to next feature
+    const timer = setTimeout(() => {
+      setBlinkState((prev) => {
+        if (!prev) return null;
+
+        // Always go in reverse (safer for modifications like toggling)
+        const nextIndex = prev.currentIndex - 1;
+
+        // Stop when we've gone through all features (reached index -1)
+        if (nextIndex < 0) {
+          console.log('Animation complete');
+          return null;
+        }
+
+        console.log('Moving to index', nextIndex);
+        return { ...prev, currentIndex: nextIndex };
+      });
+    }, blinkRate);
+
+    // Cleanup: clear the timer when component unmounts or blinkState changes
+    return () => clearTimeout(timer);
+  }, [blinkState]);
 
   // Save current polytope
   const handleSavePolytope = async () => {
@@ -1192,6 +1323,7 @@ function App() {
             mode={mode}
             width={canvasDimensions.width}
             height={canvasDimensions.height}
+            blinkState={blinkState}
           />
         </div>
 
@@ -1271,7 +1403,7 @@ function App() {
                   fontSize: '13px',
                   fontStyle: 'italic'
                 }}>
-                  No content yet. Click "Edit" to add notes...
+                  Loading content from server...
                 </div>
               )}
             </div>

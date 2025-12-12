@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import type { ColorPalette } from '../App';
+import type { PolytopeAttributes } from '../types/attributes';
 
 // Global KaTeX macros for mathematical notation
 const katexMacros = {
@@ -10,6 +11,10 @@ const katexMacros = {
   "\\NN": "\\mathbb{N}",
   "\\QQ": "\\mathbb{Q}",
   "\\CC": "\\mathbb{C}",
+  "\\AA": "\\mathbb{A}",
+  "\\TT": "\\mathbb{T}",
+  "\\GG": "\\mathbb{G}",
+  "\\PP": "\\mathbb{P}",
 };
 
 // Custom Math component using KaTeX directly
@@ -38,7 +43,7 @@ interface LatexRendererProps {
   content: string;
   textColor: string;
   palette: ColorPalette;
-  polytopeStats?: Record<string, string | number>;
+  polytopeStats?: PolytopeAttributes;
 }
 
 interface TextSegment {
@@ -47,6 +52,12 @@ interface TextSegment {
   polytopeName?: string;
   mode?: string;
   displayText?: string;
+  // New 3-part structure for polytope facts
+  attribute?: string | null;
+  attributeIndex?: number | null;
+  description?: string | null;
+  action?: string | null;
+  // Legacy fields (kept for backwards compatibility during migration)
   factKey?: string;
 }
 
@@ -70,12 +81,44 @@ function parseLatex(text: string): TextSegment[] {
     // Add the matched segment
     const matchContent = match[0];
     if (matchContent.startsWith('{{') && matchContent.endsWith('}}')) {
-      // Polytope fact - {{property}}
-      const factKey = match[3].trim(); // Captured group contains the property name
+      // Polytope fact - new syntax: {{attribute|description|action}}
+      const factContent = match[3].trim(); // Everything inside {{...}}
+
+      // Split by | to get up to 3 parts
+      const parts = factContent.split('|').map(s => s.trim());
+
+      // Validate: can't skip middle slot (||action is invalid)
+      // But {{|description}} and {{|description|action}} are valid global actions
+      if (parts.length >= 3 && parts[0] === '' && parts[1] === '' && parts[2] !== '') {
+        console.error('Invalid syntax: cannot skip attribute and description slots:', matchContent);
+        // Skip this segment
+        currentPos = match.index + matchContent.length;
+        continue;
+      }
+
+      const attributeRaw = parts[0] || null;  // Can be empty for global actions
+      const description = parts[1] || null;
+      const action = parts[2] || null;
+
+      // Parse index from attribute like "vertices[0]"
+      let attribute = attributeRaw;
+      let attributeIndex: number | null = null;
+
+      if (attributeRaw && attributeRaw.includes('[')) {
+        const indexMatch = attributeRaw.match(/^(\w+)\[(\d+)\]$/);
+        if (indexMatch) {
+          attribute = indexMatch[1];  // "vertices"
+          attributeIndex = parseInt(indexMatch[2], 10);  // 0
+        }
+      }
+
       segments.push({
         type: 'polytope-fact',
         content: matchContent,
-        factKey
+        attribute,
+        attributeIndex,
+        description,
+        action
       });
     } else if (matchContent.startsWith('[[') && matchContent.endsWith(']]')) {
       // Polytope link - parse [[name:mode|display_text]]
@@ -122,7 +165,7 @@ function parseLatex(text: string): TextSegment[] {
   return segments;
 }
 
-export default function LatexRenderer({ content, textColor, palette, polytopeStats = {} }: LatexRendererProps) {
+export default function LatexRenderer({ content, textColor, palette, polytopeStats }: LatexRendererProps) {
   // Process content to handle [center] blocks
   const processParagraphs = (text: string): Array<{ content: string; centered: boolean }> => {
     const results: Array<{ content: string; centered: boolean }> = [];
@@ -171,61 +214,112 @@ export default function LatexRenderer({ content, textColor, palette, polytopeSta
     window.dispatchEvent(event);
   };
 
-  const getDescription = (property: string): string => {
-    const descriptions: Record<string, [string, string]> = {
-      vertices: ['vertex', 'vertices'],
-      edges: ['edge', 'edges'],
-      points: ['point', 'points'],
-      faces: ['face', 'faces'],
-      interior: ['interior point', 'interior points'],
-      boundary: ['boundary point', 'boundary points']
-    };
-
-    const value = polytopeStats[property];
-    if (value === undefined) return '?';
-
-    const [singular, plural] = descriptions[property] || [property, property + 's'];
-    const word = value === 1 ? singular : plural;
-    return `${value} ${word}`;
-  };
-
-  const evaluateExpression = (expr: string): string | number => {
-    try {
-      // Check if this is a description request (property|descr)
-      if (expr.includes('|descr')) {
-        const property = expr.split('|')[0].trim();
-        return getDescription(property);
-      }
-
-      // Replace variable names with their values
-      let evaluatedExpr = expr;
-      for (const [key, value] of Object.entries(polytopeStats)) {
-        const regex = new RegExp(`\\b${key}\\b`, 'g');
-        evaluatedExpr = evaluatedExpr.replace(regex, String(value));
-      }
-
-      // Safely evaluate the expression using Function constructor
-      // Only allow basic math operations
-      const result = new Function(`return ${evaluatedExpr}`)();
-
-      // Round to reasonable precision if it's a number
-      if (typeof result === 'number') {
-        return Number.isInteger(result) ? result : Number(result.toFixed(6));
-      }
-      return result;
-    } catch (error) {
-      console.error('Error evaluating expression:', expr, error);
-      return '?';
+  // New evaluation function for 3-part attribute syntax
+  const evaluateAttribute = (
+    attribute: string | null,
+    description: string | null,
+    stats: PolytopeAttributes | undefined
+  ): string => {
+    // Handle global actions (no attribute) - these don't need stats
+    if (!attribute && description) {
+      // Return literal description for global actions
+      // Strip quotes if present
+      return description.replace(/^["'](.*)["']$/, '$1');
     }
+
+    // Handle empty/null attribute and description
+    if (!attribute) return '';
+
+    // Handle missing stats (only needed for attribute-based access)
+    if (!stats) return '?';
+
+    // Property access: vertices.count
+    if (attribute.includes('.')) {
+      const [attrName, propName] = attribute.split('.');
+      const attrObj = stats[attrName as keyof PolytopeAttributes];
+      if (!attrObj) return '?';
+      const value = (attrObj as any)[propName];
+      return String(value ?? '?');
+    }
+
+    // Get attribute object
+    const attrObj = stats[attribute as keyof PolytopeAttributes];
+    if (!attrObj) return '?';
+
+    // No description: use default (descr property)
+    if (!description) {
+      return attrObj.descr;
+    }
+
+    // Description is property name: vertices|count
+    if (description in attrObj) {
+      return String((attrObj as any)[description]);
+    }
+
+    // Description is keyword: vertices|descr
+    if (description === 'descr') {
+      return attrObj.descr;
+    }
+
+    // Description is literal string: "click here"
+    if (description.startsWith('"') && description.endsWith('"')) {
+      return description.slice(1, -1);
+    }
+    if (description.startsWith("'") && description.endsWith("'")) {
+      return description.slice(1, -1);
+    }
+
+    // Fallback: return description as-is
+    return description;
   };
+
+  const handlePolytopeFactClick = (
+    attribute: string | null,
+    attributeIndex: number | null,
+    action: string | null
+  ) => {
+    if (!action) return;
+
+    // Parse action for parameters: "blink:200" -> action="blink", params=[200]
+    const [actionType, ...paramParts] = action.split(':');
+    const params = paramParts.map(p => {
+      const num = parseInt(p, 10);
+      return isNaN(num) ? p : num;
+    });
+
+    // Dispatch event to App with the fact that was clicked
+    const event = new CustomEvent('polytopeFactClicked', {
+      detail: {
+        attribute,           // e.g., "vertices"
+        attributeIndex,      // e.g., 0
+        action: actionType,  // e.g., "blink" or "select"
+        params               // e.g., [200]
+      }
+    });
+    window.dispatchEvent(event);
+  }
+
 
   const renderSegments = (segments: TextSegment[]) => {
     return segments.map((segment, index) => {
       if (segment.type === 'polytope-fact') {
-        // Evaluate the expression (could be simple variable or math expression)
-        const value = evaluateExpression(segment.factKey!);
+        // Use new evaluateAttribute for 3-part syntax
+        const value = evaluateAttribute(
+          segment.attribute || null,
+          segment.description || null,
+          polytopeStats
+        );
+        const hasAction = !!segment.action;
+
         return (
-          <span key={index} style={{ fontWeight: '600', color: palette.selectedPoints }}>
+          <span
+            key={index}
+            onClick={hasAction ? () => handlePolytopeFactClick(segment.attribute || null, segment.attributeIndex ?? null, segment.action!) : undefined}
+            style={{
+              fontWeight: '600',
+              cursor: hasAction ? 'pointer' : 'default',
+              color: palette.selectedPoints
+            }}>
             {value}
           </span>
         );
@@ -237,9 +331,9 @@ export default function LatexRenderer({ content, textColor, palette, polytopeSta
         );
       } else if (segment.type === 'block-math') {
         return (
-          <div key={index} style={{ margin: '0.5em 0' }}>
+          <span key={index} style={{ display: 'block', margin: '0.5em 0' }}>
             <Math math={segment.content} displayMode={true} />
-          </div>
+          </span>
         );
       } else if (segment.type === 'polytope-link') {
         return (
@@ -278,7 +372,7 @@ export default function LatexRenderer({ content, textColor, palette, polytopeSta
         const segments = parseLatex(paragraph.content);
         return (
           <p key={pIndex} style={{
-            margin: '0 0 0.75em 0',
+            margin: '0 0 0.5em 0',
             whiteSpace: 'pre-wrap',
             wordWrap: 'break-word',
             textAlign: paragraph.centered ? 'center' : 'left'

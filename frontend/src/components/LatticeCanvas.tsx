@@ -6,6 +6,8 @@ import { useSectionInvestigatorHandlers } from '../hooks/useSectionInvestigatorH
 import { useRingsHandlers } from '../hooks/useRingsHandlers';
 import { StratumRegistry } from '../types/stratum';
 import { createStratificationFromPolytope, enumerateLatticePoints } from '../utils/stratification';
+import type { BlinkState, BlinkableFeature } from '../types/blinkable';
+import { buildPolytopeAttributes } from '../types/attributes';
 
 interface LatticeCanvasProps {
   palette: ColorPalette;
@@ -14,6 +16,7 @@ interface LatticeCanvasProps {
   width?: number;
   height?: number;
   gridSpacing?: number;
+  blinkState?: BlinkState | null;
 }
 
 export default function LatticeCanvas({
@@ -22,7 +25,8 @@ export default function LatticeCanvas({
   mode,
   width = 600,
   height = 400,
-  gridSpacing = 40
+  gridSpacing = 40,
+  blinkState = null
 }: LatticeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedPoints, setSelectedPoints] = useState<Set<string>>(new Set());
@@ -821,7 +825,7 @@ export default function LatticeCanvas({
       faces = 1;
     }
 
-    const stats: Record<string, string | number> = {
+    const rawStats = {
       vertices: hull.length,
       edges: edges,
       faces: faces,
@@ -830,7 +834,8 @@ export default function LatticeCanvas({
       boundary: edgePoints.size
     };
 
-    const event = new CustomEvent('polytopeStatsUpdate', { detail: stats });
+    const attributeStats = buildPolytopeAttributes(rawStats);
+    const event = new CustomEvent('polytopeStatsUpdate', { detail: attributeStats });
     window.dispatchEvent(event);
   }, [selectedPoints, edgePoints, interiorPoints]);
 
@@ -880,6 +885,155 @@ export default function LatticeCanvas({
       canvas.removeEventListener('wheel', wheelHandler);
     };
   }, []);
+
+  // Listen for requests to get blinkable features
+  useEffect(() => {
+    const handler = (event: any) => {
+      const { featureType, index } = event.detail;
+      console.log('Request for blinkable features:', featureType, 'index:', index);
+
+      const features: BlinkableFeature[] = [];
+      const selectedPointsArray = getSelectedPointsArray();
+
+      if (featureType === 'vertices' && selectedPointsArray.length >= 3) {
+        const hull = convexHull(selectedPointsArray);
+
+        // If index specified, return only that feature
+        if (index !== undefined && index !== null) {
+          if (index >= 0 && index < hull.length) {
+            features.push({
+              id: `vertex-${index}`,
+              type: 'vertex',
+              latticePoint: hull[index],
+              shape: 'circle'
+            });
+          }
+        } else {
+          // Return all features
+          hull.forEach((point, i) => {
+            features.push({
+              id: `vertex-${i}`,
+              type: 'vertex',
+              latticePoint: point,
+              shape: 'circle'
+            });
+          });
+        }
+      } else if (featureType === 'edges' && selectedPointsArray.length >= 3) {
+        const hull = convexHull(selectedPointsArray);
+
+        // If index specified, return only that feature
+        if (index !== undefined && index !== null) {
+          if (index >= 0 && index < hull.length) {
+            const p1 = hull[index];
+            const p2 = hull[(index + 1) % hull.length];
+            features.push({
+              id: `edge-${index}`,
+              type: 'edge',
+              latticePoints: [p1, p2],
+              shape: 'line'
+            });
+          }
+        } else {
+          // Return all features
+          for (let i = 0; i < hull.length; i++) {
+            const p1 = hull[i];
+            const p2 = hull[(i + 1) % hull.length];
+            features.push({
+              id: `edge-${i}`,
+              type: 'edge',
+              latticePoints: [p1, p2],
+              shape: 'line'
+            });
+          }
+        }
+      }
+
+      console.log('Built features:', features);
+      const responseEvent = new CustomEvent('blinkableFeaturesReady', {
+        detail: { features }
+      });
+      window.dispatchEvent(responseEvent);
+    };
+
+    window.addEventListener('getBlinkableFeatures', handler);
+    return () => window.removeEventListener('getBlinkableFeatures', handler);
+  }, [selectedPoints]);
+
+  // Listen for generic feature action events
+  useEffect(() => {
+    const handler = (event: any) => {
+      const { action, featureType, index } = event.detail;
+      console.log('applyFeatureAction:', { action, featureType, index, mode });
+
+      // This handler only processes individual objects (index must be specified)
+      // Collections are handled by the animation system requesting features
+      if (index === undefined || index === null) {
+        console.warn('applyFeatureAction called without index - ignoring');
+        return;
+      }
+
+      // Apply action to the feature
+      const selectedPointsArray = getSelectedPointsArray();
+
+      // Find the stratum ID for this feature
+      let stratumId: string | null = null;
+
+      if (featureType === 'vertices') {
+        const vertices = stratumRegistry.getAllVertices();
+        if (index >= 0 && index < vertices.length) {
+          stratumId = vertices[index].id;
+        }
+      } else if (featureType === 'edges') {
+        const edges = stratumRegistry.getAllEdges();
+        if (index >= 0 && index < edges.length) {
+          stratumId = edges[index].id;
+        }
+      } else if (featureType === 'faces') {
+        const faces = stratumRegistry.getAllFaces();
+        if (index >= 0 && index < faces.length) {
+          stratumId = faces[index].id;
+        }
+      }
+
+      // If we found a stratum, apply the action
+      if (stratumId) {
+        if (action === 'select') {
+          // Polytope mode: toggle the feature
+          if (mode === 'polytopes') {
+            const stratum = stratumRegistry.getStratum(stratumId);
+            if (stratum && stratum.dimension === 0) {
+              // For vertices, toggle them in the selected points set
+              const vertex = stratumRegistry.getVertex(stratumId);
+              if (vertex) {
+                console.log('Polytope mode - select: toggling vertex at:', vertex.point);
+                const pointKey = `${vertex.point.x},${vertex.point.y}`;
+                setSelectedPoints(prev => {
+                  const newSet = new Set(prev);
+                  if (newSet.has(pointKey)) {
+                    newSet.delete(pointKey);
+                  } else {
+                    newSet.add(pointKey);
+                  }
+                  return newSet;
+                });
+              }
+            }
+            // For edges/faces in polytope mode, do nothing (or could implement later)
+          }
+          // Rings mode (and others): just set the selected stratum ID
+          else {
+            console.log(`${mode} mode - select: setting selected stratum to:`, stratumId);
+            setSelectedStratumId(stratumId);
+          }
+        }
+        // Add other actions here (blink is visual only, no state changes)
+      }
+    };
+
+    window.addEventListener('applyFeatureAction', handler);
+    return () => window.removeEventListener('applyFeatureAction', handler);
+  }, [selectedPoints, stratumRegistry, mode]);
 
   // Render the canvas
   useEffect(() => {
@@ -1101,6 +1255,48 @@ export default function LatticeCanvas({
       ctx.fill();
     });
 
+    // Draw blinking feature (generalized highlighting)
+    if (blinkState && blinkState.features.length > 0) {
+      const currentFeature = blinkState.features[blinkState.currentIndex];
+
+      if (currentFeature.shape === 'circle' && currentFeature.latticePoint) {
+        // Draw vertex/point
+        const canvasPos = latticeToCanvas(currentFeature.latticePoint.x, currentFeature.latticePoint.y);
+
+        // Draw outer glow
+        ctx.fillStyle = hexToRgba(palette.hullStroke, 0.4);
+        ctx.beginPath();
+        ctx.arc(canvasPos.x, canvasPos.y, selectedPointSize * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw the highlighted feature
+        ctx.fillStyle = palette.hullStroke;
+        ctx.beginPath();
+        ctx.arc(canvasPos.x, canvasPos.y, selectedPointSize * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (currentFeature.shape === 'line' && currentFeature.latticePoints && currentFeature.latticePoints.length === 2) {
+        // Draw edge
+        const p1 = latticeToCanvas(currentFeature.latticePoints[0].x, currentFeature.latticePoints[0].y);
+        const p2 = latticeToCanvas(currentFeature.latticePoints[1].x, currentFeature.latticePoints[1].y);
+
+        // Draw glow
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = hexToRgba(palette.hullStroke, 0.3);
+        ctx.lineWidth = 8;
+        ctx.stroke();
+
+        // Draw highlighted edge
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = palette.hullStroke;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      }
+    }
+
     // Draw selected monomial (in section investigator mode)
     if (selectedInvestigatorPoint) {
       const canvasPos = latticeToCanvas(selectedInvestigatorPoint.x, selectedInvestigatorPoint.y);
@@ -1185,14 +1381,6 @@ export default function LatticeCanvas({
               ctx.fill();
             }
           }
-
-          // Draw "0" label next to the selected vertex
-          const labelOffset = 20;
-          ctx.font = 'bold 16px monospace';
-          ctx.fillStyle = palette.text;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('0', vertexCanvas.x + labelOffset, vertexCanvas.y - labelOffset);
         }
       } else if (stratum && stratum.dimension === 1) {
         // Edge selected - draw half-plane extending from edge in normal direction
@@ -1350,7 +1538,7 @@ export default function LatticeCanvas({
       }
     }
 
-  }, [width, height, gridSpacing, zoom, offset, selectedPoints, hoveredPoint, palette, latticeType, highlightedEdges, selectedInvestigatorPoint, edgeMultiplicities, mode, selectedStratumId, hoveredStratumId, stratumRegistry]);
+  }, [width, height, gridSpacing, zoom, offset, selectedPoints, hoveredPoint, palette, latticeType, highlightedEdges, selectedInvestigatorPoint, edgeMultiplicities, mode, selectedStratumId, hoveredStratumId, stratumRegistry, blinkState]);
 
   // Convert touch event to mouse-like event for handlers
   const touchToMouse = (touch: React.Touch): any => {
