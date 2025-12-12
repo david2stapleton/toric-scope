@@ -974,8 +974,6 @@ export default function LatticeCanvas({
       }
 
       // Apply action to the feature
-      const selectedPointsArray = getSelectedPointsArray();
-
       // Find the stratum ID for this feature
       let stratumId: string | null = null;
 
