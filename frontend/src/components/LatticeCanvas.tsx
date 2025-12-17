@@ -794,11 +794,18 @@ export default function LatticeCanvas({
     return () => window.removeEventListener('redoPoints', handler);
   }, [redo]);
 
-  // Listen for get selected points event (for saving)
+  // Listen for get selected points event (for saving and export)
   useEffect(() => {
     const handler = () => {
       const points = getSelectedPointsArray();
+      // Legacy support for save functionality
       (window as any).selectedPointsForSave = points.map(p => [p.x, p.y]);
+
+      // Dispatch response event for export functionality
+      const responseEvent = new CustomEvent('selectedPointsReady', {
+        detail: { points }
+      });
+      window.dispatchEvent(responseEvent);
     };
     window.addEventListener('getSelectedPoints', handler);
     return () => window.removeEventListener('getSelectedPoints', handler);

@@ -1,9 +1,13 @@
 import './App.css'
 import LatticeCanvas from './components/LatticeCanvas'
 import LatexRenderer from './components/LatexRenderer'
+import LatexExportModal from './components/LatexExportModal'
 import { useState, useEffect, useRef } from 'react'
 import type { BlinkState } from './types/blinkable'
 import type { PolytopeAttributes } from './types/attributes'
+import { convexHull } from './utils/convexHull'
+import { generateTikZCode, downloadTexFile, type PolytopeExportData, type LatexExportOptions } from './utils/latexExport'
+import type { Point } from './utils/convexHull'
 
 export interface ColorPalette {
   name: string;
@@ -139,6 +143,8 @@ function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [mobileView, setMobileView] = useState<'canvas' | 'text'>('canvas'); // Which panel to show on mobile
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Hamburger menu state
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportModalData, setExportModalData] = useState<{ hull: Point[], points: Point[] } | null>(null);
 
   // Initialize with empty strings, will load from backend
   const [modeTexts, setModeTexts] = useState<ModeTextContent>({
@@ -516,7 +522,57 @@ function App() {
     }
   };
 
+  // Export polytope as LaTeX/TikZ - open modal
+  const handleExportLatex = () => {
+    // Request selected points from canvas
+    const requestEvent = new CustomEvent('getSelectedPoints');
+    window.dispatchEvent(requestEvent);
+
+    // Listen for response
+    const handler = (event: any) => {
+      const { points } = event.detail;
+
+      if (!points || points.length < 3) {
+        alert('Need at least 3 points to export a polytope');
+        return;
+      }
+
+      // Compute convex hull
+      const hull = convexHull(points);
+
+      // Open modal with data
+      setExportModalData({ hull, points });
+      setIsExportModalOpen(true);
+
+      // Cleanup listener
+      window.removeEventListener('selectedPointsReady', handler);
+    };
+
+    window.addEventListener('selectedPointsReady', handler, { once: true });
+  };
+
+  // Handle actual export from modal
+  const handleExportWithOptions = (options: LatexExportOptions) => {
+    if (!exportModalData) return;
+
+    const exportData: PolytopeExportData = {
+      name: 'polytope',
+      hullVertices: exportModalData.hull,
+      latticeType: latticeType as 'square' | 'hexagonal',
+      allPoints: exportModalData.points
+    };
+
+    const tikzCode = generateTikZCode(exportData, options);
+    const filename = `polytope_${Date.now()}.tex`;
+    downloadTexFile(tikzCode, filename);
+
+    // Close modal
+    setIsExportModalOpen(false);
+    setExportModalData(null);
+  };
+
   return (
+    <>
     <div style={{
       position: 'fixed',
       top: 0,
@@ -1190,6 +1246,42 @@ function App() {
             </svg>
           </button>
 
+          {/* Export LaTeX */}
+          <button
+            onClick={() => {
+              handleExportLatex();
+              setIsSidebarOpen(false);
+              setIsLoadDropdownOpen(false);
+            }}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              backgroundColor: selectedPalette.background,
+              border: 'none',
+              borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+              cursor: 'pointer',
+              color: selectedPalette.text,
+              transition: 'background-color 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              outline: 'none'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.border;
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = selectedPalette.background;
+            }}
+            title="Export as LaTeX/TikZ"
+          >
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M 10 3 L 10 12 M 10 12 L 7 9 M 10 12 L 13 9" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M 4 13 L 4 16 L 16 16 L 16 13" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
           {/* Load */}
           <div style={{ position: 'relative' }}>
             <button
@@ -1412,6 +1504,33 @@ function App() {
         </div>
       </div>
     </div>
+
+    {/* LaTeX Export Modal */}
+    {exportModalData && (
+      <LatexExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => {
+          setIsExportModalOpen(false);
+          setExportModalData(null);
+        }}
+        hullVertices={exportModalData.hull}
+        allPoints={exportModalData.points}
+        latticeType={latticeType}
+        palette={selectedPalette}
+        palettes={palettes}
+        onExport={handleExportWithOptions}
+        generatePreviewCode={(options) => {
+          const exportData: PolytopeExportData = {
+            name: 'polytope',
+            hullVertices: exportModalData.hull,
+            latticeType: latticeType as 'square' | 'hexagonal',
+            allPoints: exportModalData.points
+          };
+          return generateTikZCode(exportData, options);
+        }}
+      />
+    )}
+    </>
   )
 }
 
