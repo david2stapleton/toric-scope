@@ -28,8 +28,6 @@ export default function LatexExportModal({
   isOpen,
   onClose,
   hullVertices,
-  allPoints,
-  latticeType,
   palette: initialPalette,
   palettes,
   onExport,

@@ -48,7 +48,7 @@ function hexToTikzRGB(color: string, colorName: string): string {
 }
 
 export function generateTikZCode(data: PolytopeExportData, options?: LatexExportOptions): string {
-  const { name, hullVertices, latticeType } = data;
+  const { hullVertices } = data;
 
   // Default options
   const opts = options || {
