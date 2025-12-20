@@ -2,6 +2,7 @@ import './App.css'
 import LatticeCanvas from './components/LatticeCanvas'
 import LatexRenderer from './components/LatexRenderer'
 import LatexExportModal from './components/LatexExportModal'
+import Toggle from './components/Toggle'
 import { useState, useEffect, useRef } from 'react'
 import type { BlinkState } from './types/blinkable'
 import type { PolytopeAttributes } from './types/attributes'
@@ -524,10 +525,6 @@ function App() {
 
   // Export polytope as LaTeX/TikZ - open modal
   const handleExportLatex = () => {
-    // Request selected points from canvas
-    const requestEvent = new CustomEvent('getSelectedPoints');
-    window.dispatchEvent(requestEvent);
-
     // Listen for response
     const handler = (event: any) => {
       const { points } = event.detail;
@@ -548,7 +545,12 @@ function App() {
       window.removeEventListener('selectedPointsReady', handler);
     };
 
+    // Set up listener BEFORE dispatching event
     window.addEventListener('selectedPointsReady', handler, { once: true });
+
+    // Request selected points from canvas
+    const requestEvent = new CustomEvent('getSelectedPoints');
+    window.dispatchEvent(requestEvent);
   };
 
   // Handle actual export from modal
@@ -632,50 +634,25 @@ function App() {
 
           {/* Lattice Type Toggle - Horizontal (desktop only) */}
           {!isMobile && (
-            <div
-              onClick={() => setLatticeType(latticeType === 'square' ? 'hexagonal' : 'square')}
-              style={{
-                position: 'relative',
-                width: '70px',
-                height: `${BUTTON_HEIGHT}px`,
-                backgroundColor: hexToRgba(selectedPalette.border, BORDER_OPACITY),
-                borderRadius: '16px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`
-              }}
+            <Toggle
+              isLeft={latticeType === 'square'}
+              onToggle={() => setLatticeType(latticeType === 'square' ? 'hexagonal' : 'square')}
+              leftIcon={
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                  <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              }
+              rightIcon={
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                  <path d="M 10 3 L 15.5 6.5 L 15.5 13.5 L 10 17 L 4.5 13.5 L 4.5 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
+                </svg>
+              }
               title={latticeType === 'square' ? 'Square lattice (click for hexagonal)' : 'Hexagonal lattice (click for square)'}
-            >
-              {/* Sliding knob */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '2px',
-                  left: latticeType === 'square' ? '2px' : '36px',
-                  width: '30px',
-                  height: `${BUTTON_HEIGHT - 8}px`,
-                  backgroundColor: selectedPalette.background,
-                  borderRadius: `${(BUTTON_HEIGHT - 8) / 2}px`,
-                  transition: 'left 0.2s ease-in-out',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                }}
-              >
-                {latticeType === 'square' ? (
-                  /* Square icon */
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                    <rect x="4" y="4" width="12" height="12" stroke="currentColor" strokeWidth="1.8" />
-                  </svg>
-                ) : (
-                  /* Hexagon icon */
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                    <path d="M 10 3 L 15.5 6.5 L 15.5 13.5 L 10 17 L 4.5 13.5 L 4.5 6.5 Z" stroke="currentColor" strokeWidth="1.8" fill="none" />
-                  </svg>
-                )}
-              </div>
-            </div>
+              palette={selectedPalette}
+              borderThickness={BORDER_THICKNESS}
+              borderOpacity={BORDER_OPACITY}
+              buttonHeight={BUTTON_HEIGHT}
+            />
           )}
 
           {/* Center Button */}
@@ -829,7 +806,6 @@ function App() {
                 backgroundColor: selectedPalette.background,
                 border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                 borderRadius: `${BORDER_RADIUS}px`,
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 zIndex: 1000,
                 overflow: 'hidden',
                 minWidth: isMobile ? '90px' : '110px'
@@ -852,8 +828,7 @@ function App() {
                     fontSize: '12px',
                     color: selectedPalette.text,
                     transition: 'background-color 0.1s',
-                    borderTopLeftRadius: `${BORDER_RADIUS_INNER}px`,
-                    borderTopRightRadius: `${BORDER_RADIUS_INNER}px`,
+                    borderRadius: 0,
                     outline: 'none'
                   }}
                   onMouseOver={(e) => {
@@ -944,8 +919,7 @@ function App() {
                     fontSize: '12px',
                     color: selectedPalette.text,
                     transition: 'background-color 0.1s',
-                    borderBottomLeftRadius: `${BORDER_RADIUS_INNER}px`,
-                    borderBottomRightRadius: `${BORDER_RADIUS_INNER}px`,
+                    borderRadius: 0,
                     outline: 'none'
                   }}
                   onMouseOver={(e) => {
@@ -965,60 +939,35 @@ function App() {
 
           {/* View toggle (mobile only) */}
           {isMobile && (
-            <div
-              onClick={() => setMobileView(mobileView === 'canvas' ? 'text' : 'canvas')}
-              style={{
-                position: 'relative',
-                width: '70px',
-                height: `${BUTTON_HEIGHT}px`,
-                backgroundColor: selectedPalette.border,
-                borderRadius: '16px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`
-              }}
+            <Toggle
+              isLeft={mobileView === 'canvas'}
+              onToggle={() => setMobileView(mobileView === 'canvas' ? 'text' : 'canvas')}
+              leftIcon={
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                  <circle cx="6" cy="6" r="1.5" fill="currentColor" />
+                  <circle cx="10" cy="6" r="1.5" fill="currentColor" />
+                  <circle cx="14" cy="6" r="1.5" fill="currentColor" />
+                  <circle cx="6" cy="10" r="1.5" fill="currentColor" />
+                  <circle cx="10" cy="10" r="1.5" fill="currentColor" />
+                  <circle cx="14" cy="10" r="1.5" fill="currentColor" />
+                  <circle cx="6" cy="14" r="1.5" fill="currentColor" />
+                  <circle cx="10" cy="14" r="1.5" fill="currentColor" />
+                  <circle cx="14" cy="14" r="1.5" fill="currentColor" />
+                </svg>
+              }
+              rightIcon={
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                  <line x1="4" y1="6" x2="16" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <line x1="4" y1="14" x2="12" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              }
               title={mobileView === 'canvas' ? 'Switch to Notes' : 'Switch to Lattice'}
-            >
-              {/* Sliding knob */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '2px',
-                  left: mobileView === 'canvas' ? '2px' : '36px',
-                  width: '30px',
-                  height: `${BUTTON_HEIGHT - 8}px`,
-                  backgroundColor: selectedPalette.background,
-                  borderRadius: `${(BUTTON_HEIGHT - 8) / 2}px`,
-                  transition: 'left 0.2s ease-in-out',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                }}
-              >
-                {mobileView === 'canvas' ? (
-                  /* Lattice dots icon */
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                    <circle cx="6" cy="6" r="1.5" fill="currentColor" />
-                    <circle cx="10" cy="6" r="1.5" fill="currentColor" />
-                    <circle cx="14" cy="6" r="1.5" fill="currentColor" />
-                    <circle cx="6" cy="10" r="1.5" fill="currentColor" />
-                    <circle cx="10" cy="10" r="1.5" fill="currentColor" />
-                    <circle cx="14" cy="10" r="1.5" fill="currentColor" />
-                    <circle cx="6" cy="14" r="1.5" fill="currentColor" />
-                    <circle cx="10" cy="14" r="1.5" fill="currentColor" />
-                    <circle cx="14" cy="14" r="1.5" fill="currentColor" />
-                  </svg>
-                ) : (
-                  /* Notes/text lines icon */
-                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                    <line x1="4" y1="6" x2="16" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                    <line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                    <line x1="4" y1="14" x2="12" y2="14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
-                )}
-              </div>
-            </div>
+              palette={selectedPalette}
+              borderThickness={BORDER_THICKNESS}
+              borderOpacity={BORDER_OPACITY}
+              buttonHeight={BUTTON_HEIGHT}
+            />
           )}
         </div>
       </div>
@@ -1052,7 +1001,6 @@ function App() {
           backgroundColor: selectedPalette.background,
           border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
           borderRadius: `${BORDER_RADIUS}px`,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           zIndex: 100
         }}>
           {/* Lattice Type Toggle (mobile only) */}
@@ -1159,7 +1107,7 @@ function App() {
               justifyContent: 'center',
               gap: '8px',
               outline: 'none',
-              ...(isMobile ? {} : { borderTopLeftRadius: `${BORDER_RADIUS_INNER}px`, borderTopRightRadius: `${BORDER_RADIUS_INNER}px` })
+              borderRadius: 0
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -1195,7 +1143,8 @@ function App() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              outline: 'none'
+              outline: 'none',
+              borderRadius: 0
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -1210,41 +1159,44 @@ function App() {
             </svg>
           </button>
 
-          {/* Save */}
-          <button
-            onClick={() => {
-              handleSavePolytope();
-              setIsSidebarOpen(false);
-              setIsLoadDropdownOpen(false);
-            }}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              backgroundColor: selectedPalette.background,
-              border: 'none',
-              borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
-              cursor: 'pointer',
-              color: selectedPalette.text,
-              transition: 'background-color 0.15s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              outline: 'none'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = selectedPalette.border;
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = selectedPalette.background;
-            }}
-            title="Save polytope"
-          >
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-              <path d="M 4 4 L 4 16 L 16 16 L 16 6 L 14 4 Z M 7 4 L 7 8 L 13 8 L 13 4" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              <rect x="7" y="11" width="6" height="3" stroke="currentColor" strokeWidth="1.8" fill="none" />
-            </svg>
-          </button>
+          {/* Save (development only) */}
+          {import.meta.env.DEV && (
+            <button
+              onClick={() => {
+                handleSavePolytope();
+                setIsSidebarOpen(false);
+                setIsLoadDropdownOpen(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                backgroundColor: selectedPalette.background,
+                border: 'none',
+                borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
+                cursor: 'pointer',
+                color: selectedPalette.text,
+                transition: 'background-color 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                outline: 'none',
+                borderRadius: 0
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = selectedPalette.border;
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = selectedPalette.background;
+              }}
+              title="Save polytope (dev only)"
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <path d="M 4 4 L 4 16 L 16 16 L 16 6 L 14 4 Z M 7 4 L 7 8 L 13 8 L 13 4" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                <rect x="7" y="11" width="6" height="3" stroke="currentColor" strokeWidth="1.8" fill="none" />
+              </svg>
+            </button>
+          )}
 
           {/* Export LaTeX */}
           <button
@@ -1266,7 +1218,8 @@ function App() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              outline: 'none'
+              outline: 'none',
+              borderRadius: 0
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -1276,9 +1229,13 @@ function App() {
             }}
             title="Export as LaTeX/TikZ"
           >
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-              <path d="M 10 3 L 10 12 M 10 12 L 7 9 M 10 12 L 13 9" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M 4 13 L 4 16 L 16 16 L 16 13" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="16" height="16" viewBox="0 0 30 20" fill="currentColor">
+              {/* T */}
+              <path d="M 1 2 L 1 4.5 L 4 4.5 L 4 17 L 6.5 17 L 6.5 4.5 L 9.5 4.5 L 9.5 2 Z" />
+              {/* E (full-sized but lowered) */}
+              <path d="M 10.5 7 L 10.5 20 L 17.5 20 L 17.5 17.5 L 13 17.5 L 13 14.5 L 17 14.5 L 17 12 L 13 12 L 13 9.5 L 17.5 9.5 L 17.5 7 Z" />
+              {/* X */}
+              <path d="M 18.5 2 L 21.5 9.5 L 18.5 17 L 21 17 L 23 12 L 25 17 L 27.5 17 L 24.5 9.5 L 27.5 2 L 25 2 L 23 7 L 21 2 Z" />
             </svg>
           </button>
 
@@ -1299,8 +1256,7 @@ function App() {
                 justifyContent: 'center',
                 gap: '8px',
                 outline: 'none',
-                borderBottomLeftRadius: `${BORDER_RADIUS_INNER}px`,
-                borderBottomRightRadius: `${BORDER_RADIUS_INNER}px`
+                borderRadius: 0
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -1325,9 +1281,7 @@ function App() {
                 backgroundColor: selectedPalette.background,
                 border: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
                 borderRadius: `${BORDER_RADIUS}px`,
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 zIndex: 1000,
-                minWidth: '200px',
                 maxHeight: '400px',
                 overflow: 'auto'
               }}>
@@ -1347,7 +1301,7 @@ function App() {
                       onClick={() => handleLoadPolytope(polytope.name)}
                       style={{
                         width: '100%',
-                        padding: '10px 12px',
+                        padding: '8px 12px',
                         backgroundColor: selectedPalette.background,
                         border: 'none',
                         borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
@@ -1355,7 +1309,9 @@ function App() {
                         textAlign: 'left',
                         fontSize: '12px',
                         color: selectedPalette.text,
-                        transition: 'background-color 0.1s'
+                        transition: 'background-color 0.1s',
+                        whiteSpace: 'nowrap',
+                        borderRadius: 0
                       }}
                       onMouseOver={(e) => {
                         e.currentTarget.style.backgroundColor = selectedPalette.border;
@@ -1464,6 +1420,90 @@ function App() {
             <textarea
               value={modeTexts[mode]}
               onChange={(e) => updateCurrentModeText(e.target.value)}
+              onKeyDown={(e) => {
+                // Development mode keyboard shortcuts
+                if (import.meta.env.DEV) {
+                  const isMod = e.metaKey || e.ctrlKey; // Cmd on Mac, Ctrl on Windows
+
+                  if (isMod && e.key === 'b') {
+                    e.preventDefault();
+                    const textarea = e.currentTarget;
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const text = textarea.value;
+                    const before = text.substring(0, start);
+                    const selected = text.substring(start, end);
+                    const after = text.substring(end);
+
+                    // Insert [b][/b] around selected text or at cursor
+                    const newText = before + '[b]' + selected + '[/b]' + after;
+                    updateCurrentModeText(newText);
+
+                    // Position cursor between tags (or after selection if text was selected)
+                    setTimeout(() => {
+                      textarea.selectionStart = textarea.selectionEnd = start + 3 + selected.length;
+                      textarea.focus();
+                    }, 0);
+                  } else if (isMod && e.key === 'i') {
+                    e.preventDefault();
+                    const textarea = e.currentTarget;
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const text = textarea.value;
+                    const before = text.substring(0, start);
+                    const selected = text.substring(start, end);
+                    const after = text.substring(end);
+
+                    // Insert [i][/i] around selected text or at cursor
+                    const newText = before + '[i]' + selected + '[/i]' + after;
+                    updateCurrentModeText(newText);
+
+                    // Position cursor between tags (or after selection if text was selected)
+                    setTimeout(() => {
+                      textarea.selectionStart = textarea.selectionEnd = start + 3 + selected.length;
+                      textarea.focus();
+                    }, 0);
+                  } else if (isMod && e.key === 't') {
+                    e.preventDefault();
+                    const textarea = e.currentTarget;
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const text = textarea.value;
+                    const before = text.substring(0, start);
+                    const selected = text.substring(start, end);
+                    const after = text.substring(end);
+
+                    // Insert [title][/title] around selected text or at cursor
+                    const newText = before + '[title]' + selected + '[/title]' + after;
+                    updateCurrentModeText(newText);
+
+                    // Position cursor between tags (or after selection if text was selected)
+                    setTimeout(() => {
+                      textarea.selectionStart = textarea.selectionEnd = start + 7 + selected.length;
+                      textarea.focus();
+                    }, 0);
+                  } else if (isMod && e.key === 'c') {
+                    e.preventDefault();
+                    const textarea = e.currentTarget;
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const text = textarea.value;
+                    const before = text.substring(0, start);
+                    const selected = text.substring(start, end);
+                    const after = text.substring(end);
+
+                    // Insert [center][/center] around selected text or at cursor
+                    const newText = before + '[center]' + selected + '[/center]' + after;
+                    updateCurrentModeText(newText);
+
+                    // Position cursor between tags (or after selection if text was selected)
+                    setTimeout(() => {
+                      textarea.selectionStart = textarea.selectionEnd = start + 8 + selected.length;
+                      textarea.focus();
+                    }, 0);
+                  }
+                }
+              }}
               style={{
                 flex: 1,
                 padding: '15px',

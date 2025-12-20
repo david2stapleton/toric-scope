@@ -47,7 +47,7 @@ interface LatexRendererProps {
 }
 
 interface TextSegment {
-  type: 'text' | 'inline-math' | 'block-math' | 'polytope-link' | 'polytope-fact';
+  type: 'text' | 'inline-math' | 'block-math' | 'polytope-link' | 'polytope-fact' | 'italic' | 'bold' | 'title';
   content: string;
   polytopeName?: string;
   mode?: string;
@@ -65,8 +65,8 @@ function parseLatex(text: string): TextSegment[] {
   const segments: TextSegment[] = [];
   let currentPos = 0;
 
-  // Match $...$ (inline), $$...$$ (block), [[...]] (polytope links), and {{...}} (polytope facts)
-  const pattern = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\[\[([^\]]+)\]\]|\{\{([^}]+)\}\})/g;
+  // Match $...$ (inline), $$...$$ (block), [[...]] (polytope links), {{...}} (polytope facts), [i]...[/i], [b]...[/b], and [title]...[/title]
+  const pattern = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\[\[([^\]]+)\]\]|\{\{([^}]+)\}\}|\[i\]([\s\S]*?)\[\/i\]|\[b\]([\s\S]*?)\[\/b\]|\[title\]([\s\S]*?)\[\/title\])/g;
 
   let match;
   while ((match = pattern.exec(text)) !== null) {
@@ -80,7 +80,25 @@ function parseLatex(text: string): TextSegment[] {
 
     // Add the matched segment
     const matchContent = match[0];
-    if (matchContent.startsWith('{{') && matchContent.endsWith('}}')) {
+    if (matchContent.startsWith('[i]') && matchContent.endsWith('[/i]')) {
+      // Italic text
+      segments.push({
+        type: 'italic',
+        content: match[4] // Captured group 4 contains text inside [i]...[/i]
+      });
+    } else if (matchContent.startsWith('[b]') && matchContent.endsWith('[/b]')) {
+      // Bold text
+      segments.push({
+        type: 'bold',
+        content: match[5] // Captured group 5 contains text inside [b]...[/b]
+      });
+    } else if (matchContent.startsWith('[title]') && matchContent.endsWith('[/title]')) {
+      // Title text (centered, bold, italic)
+      segments.push({
+        type: 'title',
+        content: match[6] // Captured group 6 contains text inside [title]...[/title]
+      });
+    } else if (matchContent.startsWith('{{') && matchContent.endsWith('}}')) {
       // Polytope fact - new syntax: {{attribute|description|action}}
       const factContent = match[3].trim(); // Everything inside {{...}}
 
@@ -302,7 +320,17 @@ export default function LatexRenderer({ content, textColor, palette, polytopeSta
 
   const renderSegments = (segments: TextSegment[]) => {
     return segments.map((segment, index) => {
-      if (segment.type === 'polytope-fact') {
+      if (segment.type === 'italic') {
+        return <em key={index}>{segment.content}</em>;
+      } else if (segment.type === 'bold') {
+        return <strong key={index}>{segment.content}</strong>;
+      } else if (segment.type === 'title') {
+        return (
+          <div key={index} style={{ textAlign: 'center', display: 'block', margin: '1.5em 0 1.5em 0' }}>
+            <strong><em>{segment.content}</em></strong>
+          </div>
+        );
+      } else if (segment.type === 'polytope-fact') {
         // Use new evaluateAttribute for 3-part syntax
         const value = evaluateAttribute(
           segment.attribute || null,
@@ -362,13 +390,14 @@ export default function LatexRenderer({ content, textColor, palette, polytopeSta
   };
 
   return (
-    <div style={{
-      color: textColor,
-      fontSize: '18px',
-      lineHeight: '1.2',
-      textAlign: 'left'
-    }}>
-      {paragraphs.map((paragraph, pIndex) => {
+    <>
+      <div style={{
+        color: textColor,
+        fontSize: '18px',
+        lineHeight: '1.2',
+        textAlign: 'left'
+      }}>
+        {paragraphs.map((paragraph, pIndex) => {
         const segments = parseLatex(paragraph.content);
         return (
           <p key={pIndex} style={{
@@ -381,6 +410,7 @@ export default function LatexRenderer({ content, textColor, palette, polytopeSta
           </p>
         );
       })}
-    </div>
+      </div>
+    </>
   );
 }

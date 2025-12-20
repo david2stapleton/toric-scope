@@ -88,6 +88,13 @@ export function generateTikZCode(data: PolytopeExportData, options?: LatexExport
   tikz += `\\begin{document}\n`;
   tikz += `\\begin{tikzpicture}[scale=\\PolytopeScale]\n\n`;
 
+  // Define hull vertex coordinates
+  tikz += `  % Define hull vertices\n`;
+  hullVertices.forEach((p, i) => {
+    tikz += `  \\coordinate (v${i}) at (${p.x},${p.y});\n`;
+  });
+  tikz += `\n`;
+
   // Draw lattice points using foreach loop
   tikz += `  % Lattice points\n`;
   tikz += `  \\foreach \\x in {${minX},...,${maxX}} {\n`;
@@ -96,28 +103,28 @@ export function generateTikZCode(data: PolytopeExportData, options?: LatexExport
   tikz += `    }\n`;
   tikz += `  }\n\n`;
 
-  // Draw filled polytope region
+  // Draw filled polytope region using foreach loop
+  const numVertices = hullVertices.length - 1;
   tikz += `  % Filled polytope\n`;
-  tikz += `  \\fill[\\FillColor,opacity=0.5] `;
-  hullVertices.forEach((p, i) => {
-    tikz += i === 0 ? `(${p.x},${p.y})` : ` -- (${p.x},${p.y})`;
-  });
+  tikz += `  \\fill[\\FillColor,opacity=0.5] (v0)`;
+  if (numVertices > 0) {
+    tikz += ` \\foreach \\i in {1,...,${numVertices}} { -- (v\\i) }`;
+  }
   tikz += ` -- cycle;\n\n`;
 
-  // Draw polytope edges
+  // Draw polytope edges using foreach loop
   tikz += `  % Polytope edges\n`;
-  tikz += `  \\draw[line width=\\EdgeThickness,\\StrokeColor] `;
-  hullVertices.forEach((p, i) => {
-    tikz += i === 0 ? `(${p.x},${p.y})` : ` -- (${p.x},${p.y})`;
-  });
+  tikz += `  \\draw[line width=\\EdgeThickness,\\StrokeColor] (v0)`;
+  if (numVertices > 0) {
+    tikz += ` \\foreach \\i in {1,...,${numVertices}} { -- (v\\i) }`;
+  }
   tikz += ` -- cycle;\n\n`;
 
-  // Draw hull vertices
+  // Draw hull vertices using foreach loop
   tikz += `  % Hull vertices\n`;
-  hullVertices.forEach(p => {
-    tikz += `  \\fill[\\StrokeColor] (${p.x},${p.y}) circle (\\HullVertexSize);\n`;
-  });
-  tikz += `\n`;
+  tikz += `  \\foreach \\i in {0,...,${numVertices}} {\n`;
+  tikz += `    \\fill[\\StrokeColor] (v\\i) circle (\\HullVertexSize);\n`;
+  tikz += `  }\n\n`;
 
   tikz += `\\end{tikzpicture}\n`;
   tikz += `\\end{document}\n`;
