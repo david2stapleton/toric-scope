@@ -9,6 +9,7 @@ import type { PolytopeAttributes } from './types/attributes'
 import { convexHull } from './utils/convexHull'
 import { generateTikZCode, downloadTexFile, type PolytopeExportData, type LatexExportOptions } from './utils/latexExport'
 import type { Point } from './utils/convexHull'
+import { type Mode, getAvailableModes, getDefaultMode } from './config/modes'
 
 export interface ColorPalette {
   name: string;
@@ -105,7 +106,6 @@ const palettes: ColorPalette[] = [
 ];
 
 export type LatticeType = 'square' | 'hexagonal';
-export type Mode = 'polytopes' | 'multiplicities' | 'rings' | 'fans';
 
 type ModeTextContent = Record<Mode, string>;
 
@@ -131,8 +131,9 @@ const hexToRgba = (hex: string, alpha: number) => {
 function App() {
   const [selectedPalette] = useState<ColorPalette>(palettes[0]);
   const [latticeType, setLatticeType] = useState<LatticeType>('square');
-  const [mode, setMode] = useState<Mode>('polytopes');
+  const [mode, setMode] = useState<Mode>(getDefaultMode());
   const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
+  const availableModes = getAvailableModes();
   const [isEditMode, setIsEditMode] = useState(false);
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 600, height: 600 });
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -152,6 +153,7 @@ function App() {
     'polytopes': '',
     'multiplicities': '',
     'rings': '',
+    'projectivity': '',
     'fans': ''
   });
 
@@ -789,10 +791,7 @@ function App() {
               }}
             >
               <span style={{ flex: 1, textAlign: 'left' }}>
-                {mode === 'polytopes' ? 'Polytopes'
-                  : mode === 'multiplicities' ? 'Multiplicities'
-                  : mode === 'rings' ? 'Rings'
-                  : 'Fans'}
+                {availableModes.find(m => m.id === mode)?.label || 'Mode'}
               </span>
               <span>▼</span>
             </button>
@@ -810,129 +809,43 @@ function App() {
                 overflow: 'hidden',
                 minWidth: isMobile ? '90px' : '110px'
               }}>
-                <button
-                  onClick={() => {
-                    setMode('polytopes');
-                    setIsModeDropdownOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    backgroundColor: mode === 'polytopes'
-                      ? selectedPalette.border
-                      : selectedPalette.background,
-                    border: 'none',
-                    borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontSize: '12px',
-                    color: selectedPalette.text,
-                    transition: 'background-color 0.1s',
-                    borderRadius: 0,
-                    outline: 'none'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = selectedPalette.border;
-                  }}
-                  onMouseOut={(e) => {
-                    if (mode !== 'polytopes') {
-                      e.currentTarget.style.backgroundColor = selectedPalette.background;
-                    }
-                  }}
-                >
-                  Polytopes
-                </button>
-                <button
-                  onClick={() => {
-                    setMode('rings');
-                    setIsModeDropdownOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    backgroundColor: mode === 'rings'
-                      ? selectedPalette.border
-                      : selectedPalette.background,
-                    border: 'none',
-                    borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontSize: '12px',
-                    color: selectedPalette.text,
-                    transition: 'background-color 0.1s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = selectedPalette.border;
-                  }}
-                  onMouseOut={(e) => {
-                    if (mode !== 'rings') {
-                      e.currentTarget.style.backgroundColor = selectedPalette.background;
-                    }
-                  }}
-                >
-                  Rings
-                </button>
-                <button
-                  onClick={() => {
-                    setMode('fans');
-                    setIsModeDropdownOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    backgroundColor: mode === 'fans'
-                      ? selectedPalette.border
-                      : selectedPalette.background,
-                    border: 'none',
-                    borderBottom: `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontSize: '12px',
-                    color: selectedPalette.text,
-                    transition: 'background-color 0.1s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = selectedPalette.border;
-                  }}
-                  onMouseOut={(e) => {
-                    if (mode !== 'fans') {
-                      e.currentTarget.style.backgroundColor = selectedPalette.background;
-                    }
-                  }}
-                >
-                  Fans
-                </button>
-                <button
-                  onClick={() => {
-                    setMode('multiplicities');
-                    setIsModeDropdownOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    backgroundColor: mode === 'multiplicities'
-                      ? selectedPalette.border
-                      : selectedPalette.background,
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontSize: '12px',
-                    color: selectedPalette.text,
-                    transition: 'background-color 0.1s',
-                    borderRadius: 0,
-                    outline: 'none'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = selectedPalette.border;
-                  }}
-                  onMouseOut={(e) => {
-                    if (mode !== 'multiplicities') {
-                      e.currentTarget.style.backgroundColor = selectedPalette.background;
-                    }
-                  }}
-                >
-                  Multiplicities
-                </button>
+                {availableModes.map((modeConfig, index) => (
+                  <button
+                    key={modeConfig.id}
+                    onClick={() => {
+                      setMode(modeConfig.id);
+                      setIsModeDropdownOpen(false);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      backgroundColor: mode === modeConfig.id
+                        ? selectedPalette.border
+                        : selectedPalette.background,
+                      border: 'none',
+                      borderBottom: index < availableModes.length - 1
+                        ? `${BORDER_THICKNESS}px solid ${hexToRgba(selectedPalette.border, BORDER_OPACITY)}`
+                        : 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontSize: '12px',
+                      color: selectedPalette.text,
+                      transition: 'background-color 0.1s',
+                      borderRadius: 0,
+                      outline: 'none'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = selectedPalette.border;
+                    }}
+                    onMouseOut={(e) => {
+                      if (mode !== modeConfig.id) {
+                        e.currentTarget.style.backgroundColor = selectedPalette.background;
+                      }
+                    }}
+                  >
+                    {modeConfig.label}
+                  </button>
+                ))}
               </div>
             )}
           </div>
