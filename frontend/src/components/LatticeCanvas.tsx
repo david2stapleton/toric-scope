@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { convexHull, isPointInsidePolygon, edgePointsOfPolygon, type Point } from '../utils/convexHull';
-import type { ColorPalette, LatticeType, Mode } from '../App';
+import type { ColorPalette, LatticeType } from '../App';
+import type { Mode } from '../config/modes';
 import { usePolytopeBuilderHandlers } from '../hooks/usePolytopeBuilderHandlers';
 import { useSectionInvestigatorHandlers } from '../hooks/useSectionInvestigatorHandlers';
 import { useRingsHandlers } from '../hooks/useRingsHandlers';
