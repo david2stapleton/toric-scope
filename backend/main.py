@@ -14,7 +14,7 @@ DATA_DIR.mkdir(exist_ok=True)
 TEXT_FILE = DATA_DIR / "mode_texts.json"
 
 # Valid modes
-Mode = Literal["polytopes", "multiplicities", "rings", "fans"]
+Mode = Literal["polytopes", "multiplicities", "rings", "projectivity", "fans"]
 
 class TextContent(BaseModel):
     content: str
@@ -42,8 +42,9 @@ async def root():
 
 
 @app.get("/api/health")
+@app.head("/api/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint - supports GET and HEAD requests"""
     return {"status": "healthy", "service": "toric-scope-api"}
 
 
@@ -101,6 +102,7 @@ async def get_all_texts():
         "polytopes": texts.get("polytopes", ""),
         "multiplicities": texts.get("multiplicities", ""),
         "rings": texts.get("rings", ""),
+        "projectivity": texts.get("projectivity", ""),
         "fans": texts.get("fans", "")
     }
 
