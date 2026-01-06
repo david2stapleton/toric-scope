@@ -36,8 +36,9 @@ app.add_middleware(
 
 
 @app.get("/")
+@app.head("/")
 async def root():
-    """Root endpoint - basic health check"""
+    """Root endpoint - basic health check - supports GET and HEAD requests"""
     return {"message": "Toric Scope API is running"}
 
 
